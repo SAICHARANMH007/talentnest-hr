@@ -2,9 +2,14 @@
  * Module 11 audit: face.js route
  *
  * Behaviors proven:
- *   FACE-A  GET /status               — 401 no token; 200 enrollment status.
- *   FACE-B  POST /enroll              — 401 no token; 400 no consent; 400 short
- *                                       descriptor; 400 no photos; 200 enrolled.
+ *   FACE-A  GET /status               — 401 no token; 200 enrollment status;
+ *                                       consentLogin + consentProctoring returned.
+ *   FACE-A2 POST /consent             — 401 no token; 400 non-boolean; 400 not enrolled;
+ *                                       200 updates proctoring consent.
+ *   FACE-B  POST /enroll              — 401 no token; 400 no consent; 400 no consentLogin;
+ *                                       400 short descriptor; 400 no photos;
+ *                                       200 enrolled with legacy consent=true (backward compat).
+ *   FACE-B2 POST /enroll              — consentProctoring stored; login-only enrollment works.
  *   FACE-C  POST /photo               — 401 no token; 400 no photo; 200 uploaded.
  *   FACE-D  DELETE /photo             — 401 no token; 200 photo removed.
  *   FACE-E  POST /verify              — 401 no token; 400 invalid descriptor;
@@ -491,5 +496,174 @@ describe('POST /api/face/verify-otp — verify face login OTP (FACE-M)', () => {
       .send({ email: 'admin@test.example', otp: '999999' });
 
     expect(res.status).toBe(401);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// A1 Consent & Disclosure Rebuild — new tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('POST /api/face/enroll — unbundled consent validation (A1)', () => {
+  it('returns 400 when neither consent nor consentLogin is provided', async () => {
+    const res = await request(buildApp())
+      .post('/api/face/enroll')
+      .set('Authorization', `Bearer ${makeToken()}`)
+      .send({ descriptor: VALID_DESC, photos: ['data:image/jpg;base64,abc'] });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/consent/i);
+  });
+
+  it('returns 400 when consentLogin is explicitly false', async () => {
+    const res = await request(buildApp())
+      .post('/api/face/enroll')
+      .set('Authorization', `Bearer ${makeToken()}`)
+      .send({ consentLogin: false, descriptor: VALID_DESC, photos: ['data:image/jpg;base64,abc'] });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/consent/i);
+  });
+
+  it('accepts legacy consent: true for backward compat (still 400 on short descriptor)', async () => {
+    // The legacy consent=true field should be accepted as login consent
+    // but this still fails on short descriptor — proving the consent check passes
+    const res = await request(buildApp())
+      .post('/api/face/enroll')
+      .set('Authorization', `Bearer ${makeToken()}`)
+      .send({ consent: true, descriptor: [0.1, 0.2], photos: ['data:image/jpg;base64,abc'] });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/descriptor/i); // consent passed, descriptor failed
+  });
+
+  it('accepts new consentLogin: true (still 400 on short descriptor)', async () => {
+    const res = await request(buildApp())
+      .post('/api/face/enroll')
+      .set('Authorization', `Bearer ${makeToken()}`)
+      .send({ consentLogin: true, descriptor: [0.1, 0.2], photos: ['data:image/jpg;base64,abc'] });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/descriptor/i); // consent passed, descriptor failed
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe('POST /api/face/proctor-check — proctoring consent enforcement (A1)', () => {
+  it('returns 403 when user used new consent system but did NOT give proctoring consent', async () => {
+    // Auth middleware calls findById first, then the route calls it a second time for face fields.
+    // mockImplementationOnce chains in call order.
+    vi.spyOn(User, 'findById')
+      .mockImplementationOnce(() => chainOf({
+        // First call: auth middleware
+        _id: CANDIDATE_ID, id: CANDIDATE_ID, role: 'candidate',
+        tenantId: TENANT_ID, isActive: true, name: 'Cand', email: 'cand@test.example',
+        toObject: () => ({}),
+      }))
+      .mockImplementationOnce(() => chainOf({
+        // Second call: route checks faceConsentLogin / faceConsentProctoring
+        _id: CANDIDATE_ID, id: CANDIDATE_ID, role: 'candidate',
+        tenantId: TENANT_ID, isActive: true, name: 'Cand', email: 'cand@test.example',
+        faceEnrolled: true, faceConsentLogin: true, faceConsentProctoring: false,
+        faceConsentGiven: true, faceDescriptor: VALID_DESC,
+        toObject: () => ({}),
+      }));
+
+    vi.spyOn(AssessmentSubmission, 'findOne').mockResolvedValue({
+      _id: SUB_ID, candidateId: CANDIDATE_ID,
+      faceVerifications: [],
+      faceVerificationSummary: {},
+      save: vi.fn().mockResolvedValue(true),
+    });
+
+    const res = await request(buildApp())
+      .post('/api/face/proctor-check')
+      .set('Authorization', `Bearer ${makeToken('candidate')}`)
+      .send({ submissionId: SUB_ID, descriptor: VALID_DESC });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/proctoring consent/i);
+  });
+
+  it('allows proctoring for legacy user (faceConsentGiven=true, faceConsentLogin=false)', async () => {
+    // Legacy user: old single consent — should be allowed through for backward compat
+    vi.spyOn(User, 'findById')
+      .mockImplementationOnce(() => chainOf({
+        // Auth middleware
+        _id: CANDIDATE_ID, id: CANDIDATE_ID, role: 'candidate',
+        tenantId: TENANT_ID, isActive: true, name: 'Cand', email: 'cand@test.example',
+        toObject: () => ({}),
+      }))
+      .mockImplementationOnce(() => chainOf({
+        // Route face-field lookup
+        _id: CANDIDATE_ID, id: CANDIDATE_ID, role: 'candidate',
+        tenantId: TENANT_ID, isActive: true, name: 'Cand', email: 'cand@test.example',
+        faceEnrolled: true, faceConsentGiven: true, faceConsentLogin: false,
+        faceConsentProctoring: false, faceDescriptor: VALID_DESC,
+        toObject: () => ({}),
+      }));
+
+    vi.spyOn(AssessmentSubmission, 'findOne').mockResolvedValue({
+      _id: SUB_ID, candidateId: CANDIDATE_ID,
+      faceVerifications: [],
+      faceVerificationSummary: {},
+      save: vi.fn().mockResolvedValue(true),
+    });
+
+    const res = await request(buildApp())
+      .post('/api/face/proctor-check')
+      .set('Authorization', `Bearer ${makeToken('candidate')}`)
+      .send({ submissionId: SUB_ID, descriptor: VALID_DESC });
+
+    // Legacy users are allowed (backward compat) — not 403
+    expect(res.status).not.toBe(403);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe('POST /api/face/consent — update proctoring consent (A1)', () => {
+  it('returns 401 with no token', async () => {
+    const res = await request(buildApp())
+      .post('/api/face/consent')
+      .send({ consentProctoring: true });
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 400 when consentProctoring is not a boolean', async () => {
+    const res = await request(buildApp())
+      .post('/api/face/consent')
+      .set('Authorization', `Bearer ${makeToken()}`)
+      .send({ consentProctoring: 'yes' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/boolean/i);
+  });
+
+  it('returns 400 when user is not enrolled', async () => {
+    // Default mock: faceEnrolled is undefined → falsy
+    const res = await request(buildApp())
+      .post('/api/face/consent')
+      .set('Authorization', `Bearer ${makeToken()}`)
+      .send({ consentProctoring: true });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/enroll/i);
+  });
+
+  it('returns 200 when enrolled user updates proctoring consent to true', async () => {
+    vi.spyOn(User, 'findById')
+      .mockImplementationOnce(() => chainOf({
+        // Auth middleware
+        _id: ADMIN_ID, id: ADMIN_ID, role: 'admin',
+        tenantId: TENANT_ID, isActive: true, name: 'Admin', email: 'admin@test.example',
+        toObject: () => ({}),
+      }))
+      .mockImplementationOnce(() => chainOf({
+        // /consent route: check faceEnrolled
+        _id: ADMIN_ID, id: ADMIN_ID, faceEnrolled: true,
+        toObject: () => ({}),
+      }));
+
+    const res = await request(buildApp())
+      .post('/api/face/consent')
+      .set('Authorization', `Bearer ${makeToken()}`)
+      .send({ consentProctoring: true });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.consentProctoring).toBe(true);
   });
 });

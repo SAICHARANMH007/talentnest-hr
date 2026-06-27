@@ -235,7 +235,7 @@ function PhotoPanel({ photoUrl, onPhotoUpdated }) {
 //
 // After liveness passes, a 3-2-1 auto-countdown fires for each pose.
 // The manual "Capture" button is always available once liveness passes.
-function FaceCamera({ stream, onDone, onCancel }) {
+function FaceCamera({ stream, consentProctoring = false, onDone, onCancel }) {
   const [cameraReady, setCameraReady]     = useState(false);
   const [modelReady, setModelReady]       = useState(false);
   const [modelLoading, setMLoading]       = useState(false);
@@ -464,13 +464,14 @@ function FaceCamera({ stream, onDone, onCancel }) {
 
       try {
         const res = await api.enrollFace({
-          descriptor     : avgDesc,
-          descriptors    : allFeat.map(f => Array.from(f.descriptor)), // per-pose gallery for k-NN login
-          landmarks      : avgLms,
-          photos         : capturedFramesRef.current.map(f => f.photo),
-          bestPhotoIndex : 0,
-          consent        : true,
-          extFeatures    : { perFrame: allFeat, avgDists, totalPoints },
+          descriptor        : avgDesc,
+          descriptors       : allFeat.map(f => Array.from(f.descriptor)), // per-pose gallery for k-NN login
+          landmarks         : avgLms,
+          photos            : capturedFramesRef.current.map(f => f.photo),
+          bestPhotoIndex    : 0,
+          consentLogin      : true,              // always true (user reached this screen through the checkbox)
+          consentProctoring : consentProctoring, // separate granular consent passed from parent
+          extFeatures       : { perFrame: allFeat, avgDists, totalPoints },
         });
         onDone(res?.photoUrl || res?.data?.photoUrl);
       } catch (e) {
@@ -611,11 +612,12 @@ function FaceCamera({ stream, onDone, onCancel }) {
 
 // ── Panel B — Face ID ──────────────────────────────────────────────────────────
 function FaceIdPanel({ frsStatus, onEnrolled }) {
-  const [showCamera, setShowCamera]       = useState(false);
-  const [pendingStream, setPendingStream] = useState(null);
-  const [consent, setConsent]             = useState(false);
-  const [deleting, setDeleting]           = useState(false);
-  const [toast, setToast]                 = useState({ msg:'', ok:true });
+  const [showCamera, setShowCamera]             = useState(false);
+  const [pendingStream, setPendingStream]       = useState(null);
+  const [consentLogin, setConsentLogin]         = useState(false);
+  const [consentProctoring, setConsentProctoring] = useState(false);
+  const [deleting, setDeleting]                 = useState(false);
+  const [toast, setToast]                       = useState({ msg:'', ok:true });
 
   const flash = (msg, ok=true) => { setToast({ msg, ok }); setTimeout(() => setToast({ msg:'', ok:true }), 5000); };
 
@@ -649,7 +651,8 @@ function FaceIdPanel({ frsStatus, onEnrolled }) {
 
   const handleDone = (newPhotoUrl) => {
     setShowCamera(false);
-    setConsent(false);
+    setConsentLogin(false);
+    setConsentProctoring(false);
     onEnrolled({ enrolled:true, photoUrl:newPhotoUrl });
     flash('✅ Face ID enrolled! You can now log in with your face and get verified during assessments.', true);
   };
@@ -661,6 +664,7 @@ function FaceIdPanel({ frsStatus, onEnrolled }) {
         <div style={S.divider} />
         <FaceCamera
           stream={pendingStream}
+          consentProctoring={consentProctoring}
           onDone={handleDone}
           onCancel={() => { setPendingStream(null); setShowCamera(false); }}
         />
@@ -702,18 +706,47 @@ function FaceIdPanel({ frsStatus, onEnrolled }) {
             🔒 5-pose capture + stable-frame liveness · 12,730 facial data points · industry-standard security
           </div>
 
-          {!consent ? (
-            <div style={{ background:'#f0f9ff', border:'1px solid #bae6fd', borderRadius:10, padding:'10px 14px' }}>
-              <label style={{ display:'flex', alignItems:'flex-start', gap:8, cursor:'pointer' }}>
-                <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)}
-                  style={{ marginTop:3, accentColor:'#0176D3', flexShrink:0 }} />
-                <span style={{ fontSize:12, color:'#0369a1', lineHeight:1.5 }}>
-                  I consent to storing my facial biometric data for identity verification and face login.
-                  I can remove this data at any time from this page.
-                </span>
-              </label>
+          {/* Biometric consent — two distinct, unbundled checkboxes (DPDP Act / GDPR) */}
+          <div style={{ background:'#fafaf9', border:'1.5px solid #e2e8f0', borderRadius:10, padding:'12px 14px', display:'flex', flexDirection:'column', gap:10 }}>
+            <div style={{ fontSize:10, fontWeight:800, color:'#64748b', textTransform:'uppercase', letterSpacing:0.6 }}>
+              Biometric Data Consent — required by law
             </div>
-          ) : (
+
+            {/* Consent A: Identity & login */}
+            <label style={{ display:'flex', alignItems:'flex-start', gap:8, cursor:'pointer' }}>
+              <input type="checkbox" checked={consentLogin} onChange={e => setConsentLogin(e.target.checked)}
+                style={{ marginTop:3, accentColor:'#0176D3', flexShrink:0 }} />
+              <span style={{ fontSize:12, color:'#0369a1', lineHeight:1.6 }}>
+                <strong>Identity &amp; login</strong> — I consent to TalentNest collecting and storing my{' '}
+                <strong>facial biometric data</strong> (128-dimensional face embedding + up to 5 enrollment photos)
+                for identity verification and face login. I can permanently delete this data at any time from this page.{' '}
+                <a href="/privacy-policy" target="_blank" rel="noopener noreferrer"
+                  style={{ color:'#0176D3', textDecoration:'underline' }}>Privacy Policy</a>
+              </span>
+            </label>
+
+            {/* Consent B: Assessment monitoring — separate purpose, separate consent */}
+            <label style={{ display:'flex', alignItems:'flex-start', gap:8, cursor:'pointer',
+              opacity: consentLogin ? 1 : 0.5, pointerEvents: consentLogin ? 'auto' : 'none' }}>
+              <input type="checkbox" checked={consentProctoring} onChange={e => setConsentProctoring(e.target.checked)}
+                disabled={!consentLogin}
+                style={{ marginTop:3, accentColor:'#7c3aed', flexShrink:0 }} />
+              <span style={{ fontSize:12, color:'#5b21b6', lineHeight:1.6 }}>
+                <strong>Assessment monitoring (separate consent)</strong> — I also consent to my face being
+                periodically verified during skill assessments to confirm my identity and prevent impersonation.
+                My camera will capture frames every ~60 seconds; frames that fail the match threshold are saved for
+                admin review. This consent is optional and can be withdrawn by removing Face ID.
+              </span>
+            </label>
+
+            {!consentLogin && (
+              <div style={{ fontSize:11, color:'#94a3b8', fontStyle:'italic' }}>
+                You must accept Identity &amp; login consent before enabling assessment monitoring.
+              </div>
+            )}
+          </div>
+
+          {consentLogin && (
             <button style={S.btnPri} onClick={handleStartCamera}>
               🔐 Start Face Enrollment (5 poses · auto-capture)
             </button>

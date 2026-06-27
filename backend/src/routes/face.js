@@ -285,27 +285,35 @@ async function detectDuplicatesAsync(userId, descriptor, tenantId) {
 // GET /api/face/status — is the current user enrolled?
 router.get('/status', ...guard, asyncHandler(async (req, res) => {
   const user = await User.findById(req.user.id)
-    .select('faceEnrolled faceConsentGiven faceEnrolledAt faceEnrollmentPhotos photoUrl')
+    .select('faceEnrolled faceConsentGiven faceConsentLogin faceConsentProctoring faceEnrolledAt faceEnrollmentPhotos photoUrl')
     .lean();
   res.json({
     success: true,
     data: {
-      enrolled     : !!user?.faceEnrolled,
-      consentGiven : !!user?.faceConsentGiven,
-      enrolledAt   : user?.faceEnrolledAt || null,
-      photoUrl     : user?.photoUrl || null,
-      enrollmentPhotos: user?.faceEnrollmentPhotos || [],
-      photoCount   : (user?.faceEnrollmentPhotos || []).length,
+      enrolled          : !!user?.faceEnrolled,
+      consentGiven      : !!user?.faceConsentGiven,
+      consentLogin      : !!user?.faceConsentLogin,
+      consentProctoring : !!user?.faceConsentProctoring,
+      enrolledAt        : user?.faceEnrolledAt || null,
+      photoUrl          : user?.photoUrl || null,
+      enrollmentPhotos  : user?.faceEnrollmentPhotos || [],
+      photoCount        : (user?.faceEnrollmentPhotos || []).length,
     },
   });
 }));
 
 // POST /api/face/enroll — store face descriptor + upload best photo to Cloudinary
-// Body: { descriptor: number[], descriptors?: number[][], landmarks?: number[], photos: string[] (base64), bestPhotoIndex?: number, consent: true }
+// Body: { descriptor: number[], descriptors?: number[][], landmarks?: number[], photos: string[] (base64),
+//         bestPhotoIndex?: number, consentLogin: true, consentProctoring?: boolean }
+// Legacy: consent: true (treated as consentLogin for backward compat)
 router.post('/enroll', ...guard, asyncHandler(async (req, res) => {
-  const { descriptor, descriptors, landmarks, photos, bestPhotoIndex = 0, consent } = req.body;
+  const { descriptor, descriptors, landmarks, photos, bestPhotoIndex = 0,
+          consent, consentLogin, consentProctoring } = req.body;
 
-  if (!consent) throw new AppError('Face enrollment requires explicit consent.', 400);
+  // Accept new unbundled consentLogin OR legacy consent field for backward compat
+  const loginConsented = consentLogin === true || consent === true;
+  if (!loginConsented)
+    throw new AppError('Face enrollment requires explicit consent to biometric data storage for identity verification and face login.', 400);
   if (!Array.isArray(descriptor) || descriptor.length < 64 || descriptor.length > 512)
     throw new AppError('Invalid face descriptor. Please retake the enrollment photos.', 400);
   if (!Array.isArray(photos) || photos.length === 0)
@@ -347,11 +355,13 @@ router.post('/enroll', ...guard, asyncHandler(async (req, res) => {
 
   // Persist to User
   const updatePayload = {
-    faceEnrolled        : true,
-    faceConsentGiven    : true,
-    faceConsentAt       : now,
-    faceEnrolledAt      : now,
-    faceDescriptor      : descriptor,
+    faceEnrolled          : true,
+    faceConsentGiven      : true,                    // backward compat flag
+    faceConsentLogin      : true,                    // granular: identity/login consent
+    faceConsentProctoring : consentProctoring === true, // granular: assessment monitoring consent
+    faceConsentAt         : now,
+    faceEnrolledAt        : now,
+    faceDescriptor        : descriptor,
     // k-NN gallery: individual per-pose descriptors (up to 5) for per-frame matching at login
     ...(Array.isArray(descriptors) && descriptors.length >= 2
       ? { faceDescriptors: descriptors.slice(0, 5).map(d => Array.from(d)) }
@@ -459,7 +469,18 @@ router.post('/proctor-check', ...guard, asyncHandler(async (req, res) => {
   });
   if (!submission) throw new AppError('Submission not found.', 404);
 
-  const user = await User.findById(req.user.id).select('faceEnrolled faceDescriptor').lean();
+  const user = await User.findById(req.user.id)
+    .select('faceEnrolled faceDescriptor faceConsentLogin faceConsentProctoring faceConsentGiven')
+    .lean();
+
+  // Consent enforcement: if user enrolled with the NEW unbundled consent system
+  // and explicitly did NOT give proctoring consent, block the check.
+  // Legacy users (faceConsentGiven=true, faceConsentLogin=false) are allowed through
+  // for backward compat until they re-enroll.
+  const usedNewConsent = !!user?.faceConsentLogin;
+  if (usedNewConsent && !user?.faceConsentProctoring) {
+    throw new AppError('Assessment monitoring requires separate proctoring consent. Please update your consent in your profile settings.', 403);
+  }
 
   let score = 0;
   let passed = false;
@@ -514,6 +535,26 @@ router.post('/proctor-check', ...guard, asyncHandler(async (req, res) => {
     confidence: confidenceBand(score),
     flagged: submission.faceVerificationSummary.flagged,
   });
+}));
+
+// POST /api/face/consent — update granular biometric consent (e.g. add proctoring consent later)
+// Body: { consentProctoring: boolean }
+router.post('/consent', ...guard, asyncHandler(async (req, res) => {
+  const { consentProctoring } = req.body;
+  if (typeof consentProctoring !== 'boolean')
+    throw new AppError('consentProctoring must be a boolean value.', 400);
+
+  const uid = String(req.user.id);
+  const user = await User.findById(uid).select('faceEnrolled').lean();
+  if (!user?.faceEnrolled)
+    throw new AppError('You must enroll your face before updating proctoring consent.', 400);
+
+  await User.findByIdAndUpdate(uid, { $set: { faceConsentProctoring: consentProctoring } });
+  if (req.user.email && req.user.tenantId) {
+    await syncProfile(req.user.email, { faceConsentProctoring: consentProctoring }, req.user.tenantId);
+  }
+  logger.audit('Face proctoring consent updated', uid, req.user.tenantId, { consentProctoring });
+  res.json({ success: true, consentProctoring });
 }));
 
 // ── Admin routes ─────────────────────────────────────────────────────────────

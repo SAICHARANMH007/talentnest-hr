@@ -73,6 +73,9 @@ const userSchema = new mongoose.Schema({
   faceDescriptors      : { type: mongoose.Schema.Types.Mixed, default: null }, // gallery: Array<number[]> — up to 5 individual 128-d embeddings for k-NN matching
   faceLandmarks        : { type: [Number], default: undefined }, // 136 values (68 landmarks × x,y)
   faceEnrollmentPhotos : { type: [String], default: undefined }, // up to 5 Cloudinary URLs
+  // Granular biometric consent (DPDP Act / GDPR requirement — unbundled per purpose)
+  faceConsentLogin      : { type: Boolean, default: false }, // consent for identity verification and face login
+  faceConsentProctoring : { type: Boolean, default: false }, // separate consent for assessment monitoring
 
   phone       : { type: String, trim: true },
   title       : { type: String, trim: true },

@@ -19,7 +19,7 @@ async function syncProfile(email, updates, tenantId) {
   const SYNCABLE_FIELDS = [
     'name', 'phone', 'location', 'title', 'summary', 'skills',
     'experience', 'isFresher', 'college', 'linkedinUrl', 'resumeUrl', 'videoResumeUrl', 'photoUrl',
-    'faceEnrolled', 'faceDescriptor', 'faceLandmarks', 'faceEnrollmentPhotos', 'faceConsentGiven', 'faceConsentAt', 'faceEnrolledAt',
+    'faceEnrolled', 'faceDescriptor', 'faceLandmarks', 'faceEnrollmentPhotos', 'faceConsentGiven', 'faceConsentAt', 'faceEnrolledAt', 'faceConsentLogin', 'faceConsentProctoring',
     'currentCompany', 'currentCTC', 'expectedCTC', 'relevantExperience',
     'preferredLocation', 'availability', 'noticePeriodDays',
     'candidateStatus', 'certifications', 'client', 'ta',

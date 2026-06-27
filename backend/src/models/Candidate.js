@@ -36,6 +36,9 @@ const candidateSchema = new mongoose.Schema({
   faceDescriptor       : { type: [Number], default: undefined },
   faceLandmarks        : { type: [Number], default: undefined },
   faceEnrollmentPhotos : { type: [String], default: undefined },
+  // Granular biometric consent — synced from User via syncProfile
+  faceConsentLogin      : { type: Boolean, default: false },
+  faceConsentProctoring : { type: Boolean, default: false },
 
   // ── HR placement fields ─────────────────────────────────────────────────────
   currentCompany     : { type: String, trim: true },

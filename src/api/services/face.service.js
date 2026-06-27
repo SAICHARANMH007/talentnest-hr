@@ -7,7 +7,8 @@ export const faceService = {
   verifyFace:    (body)         => req('POST', '/face/verify',  body),
   removePhoto:   ()             => req('DELETE','/face/photo'),
   deleteFace:    ()             => req('DELETE','/face/enroll'),
-  proctorCheck:  (body)         => req('POST', '/face/proctor-check', body),
+  proctorCheck:      (body) => req('POST', '/face/proctor-check', body),
+  updateFaceConsent: (body) => req('POST', '/face/consent',       body),
 
   // Public — no auth token needed (user is not logged in yet)
   identifyFace:     (body)  => req('POST', '/face/identify',       body, false),
