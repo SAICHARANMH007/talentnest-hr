@@ -172,6 +172,18 @@ function tenantFilter(tenantId) {
   return { $or: [{ tenantId: null }, { tenantId: new mongoose.Types.ObjectId(tenantId) }] };
 }
 
+// Normalize skill name to the exact casing stored in DB (case-insensitive lookup).
+// Prevents "bdm" ≠ "BDM" mismatches when candidates navigate from profile skills.
+async function normalizeSkillName(rawSkill) {
+  const clean = rawSkill.trim();
+  const escaped = clean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const doc = await SkillQuestion.findOne({
+    skill: { $regex: new RegExp(`^${escaped}$`, 'i') },
+    isActive: true,
+  }).select('skill').lean();
+  return doc ? doc.skill : clean;
+}
+
 // ── Public: list available skills ─────────────────────────────────────────────
 
 router.get('/skills', auth, async (req, res) => {
@@ -207,19 +219,21 @@ router.get('/skills', auth, async (req, res) => {
 
 router.post('/attempt/start', auth, allowRoles('candidate'), async (req, res) => {
   try {
-    const { skill } = req.body;
-    if (!skill || !skill.trim()) return res.status(400).json({ error: 'skill is required' });
+    const { skill: rawSkill } = req.body;
+    if (!rawSkill || !rawSkill.trim()) return res.status(400).json({ error: 'skill is required' });
 
+    // Normalize skill casing to match the DB (e.g. "bdm" → "BDM")
+    const skill = await normalizeSkillName(rawSkill);
     const candidateId = new mongoose.Types.ObjectId(req.user.id);
 
     // One active attempt at a time per candidate+skill
-    const active = await SkillAttempt.findOne({ candidateId, skill: skill.trim(), status: 'in_progress' }).lean();
+    const active = await SkillAttempt.findOne({ candidateId, skill, status: 'in_progress' }).lean();
     if (active) {
       return res.status(409).json({ error: 'You already have an in-progress attempt for this skill. Submit it first.' });
     }
 
     // 24h cooldown after a failed attempt (passed attempts allow retake freely)
-    const lastAttempt = await SkillAttempt.findOne({ candidateId, skill: skill.trim(), status: 'submitted' })
+    const lastAttempt = await SkillAttempt.findOne({ candidateId, skill, status: 'submitted' })
       .sort({ submittedAt: -1 }).lean();
     if (lastAttempt && lastAttempt.passed === false) {
       const elapsed = Date.now() - new Date(lastAttempt.submittedAt).getTime();
@@ -234,7 +248,7 @@ router.post('/attempt/start', auth, allowRoles('candidate'), async (req, res) =>
     }
 
     // Fetch question pool
-    const baseFilter = { skill: skill.trim(), isActive: true, ...tenantFilter(req.user.tenantId) };
+    const baseFilter = { skill, isActive: true, ...tenantFilter(req.user.tenantId) };
 
     const [hardPool, mediumPool] = await Promise.all([
       SkillQuestion.find({ ...baseFilter, difficulty: 'hard' }).lean(),
@@ -368,9 +382,10 @@ router.get('/my-results', auth, allowRoles('candidate'), async (req, res) => {
 router.get('/attempt/active/:skill', auth, allowRoles('candidate'), async (req, res) => {
   try {
     const candidateId = new mongoose.Types.ObjectId(req.user.id);
+    const skill = await normalizeSkillName(decodeURIComponent(req.params.skill));
     const attempt = await SkillAttempt.findOne({
       candidateId,
-      skill:  decodeURIComponent(req.params.skill),
+      skill,
       status: 'in_progress',
     }).lean();
 
@@ -593,7 +608,7 @@ router.get('/badges/:userId', auth, async (req, res) => {
 
 router.get('/leaderboard/:skill', auth, async (req, res) => {
   try {
-    const skill = decodeURIComponent(req.params.skill);
+    const skill = await normalizeSkillName(decodeURIComponent(req.params.skill));
     // Best passing attempt per candidate, sorted by score desc then date asc
     const rows = await SkillAttempt.aggregate([
       { $match: { skill, status: 'submitted', passed: true } },
@@ -613,7 +628,7 @@ router.get('/leaderboard/:skill', auth, async (req, res) => {
 
 router.get('/admin/stats/:skill', auth, allowRoles('admin', 'super_admin'), async (req, res) => {
   try {
-    const skill = decodeURIComponent(req.params.skill);
+    const skill = await normalizeSkillName(decodeURIComponent(req.params.skill));
 
     const [distribution, flagged, totalAttempts, passedAttempts] = await Promise.all([
       // Percentile buckets: 0-25, 25-50, 50-75, 75-90, 90-100
@@ -684,6 +699,11 @@ router.post('/admin/questions/seed-built-in', auth, allowRoles('admin', 'super_a
 
     const BUILT_IN = {
       Sales: [
+        // easy
+        q('easy','mcq_single','What does B2B stand for in sales?',[opt('a','Business-to-Business: selling products or services from one business to another',true),opt('b','Buy-to-Browse'),opt('c','Business-to-Browser'),opt('d','Buyer-to-Buyer')],1,'B2B contrasts with B2C (Business-to-Consumer) where the end customer is an individual.'),
+        q('easy','mcq_single','What is a "lead" in sales terminology?',[opt('a','The sales manager'),opt('b','A potential customer who has shown some interest in a product or service and may become a buyer',true),opt('c','A signed contract'),opt('d','A marketing budget item')],1,'Leads are the first stage of the sales funnel; they are qualified before becoming prospects.'),
+        q('easy','mcq_single','What is the primary purpose of a sales pitch?',[opt('a','To request a refund'),opt('b','To introduce a product or service, explain its value, and persuade the listener to take the next step — usually a demo, meeting, or purchase',true),opt('c','To negotiate salary'),opt('d','To write a proposal')],1,'A good pitch focuses on solving the buyer\'s problem, not just listing features.'),
+        // hard
         q('hard','mcq_single','What is SPIN Selling and what do the letters stand for?',[opt('a','Standard-Price-Incentive-Negotiation'),opt('b','Situation-Problem-Implication-Need-Payoff: a consultative selling framework that guides reps to ask questions revealing the impact of problems and the value of solving them',true),opt('c','Sales-Prospect-Identify-Negotiate'),opt('d','A discount pricing model')],2,'SPIN Selling by Neil Rackham focuses on asking the right questions rather than pitching features.'),
         q('hard','mcq_single','What is the difference between a prospect\'s "pain point" and a "buying trigger"?',[opt('a','They mean the same thing'),opt('b','A pain point is an ongoing problem the prospect experiences; a buying trigger is a specific event that creates urgency to solve it now (e.g. a regulation change, budget release, leadership change)',true),opt('c','A buying trigger is always price-related'),opt('d','Pain points only apply to B2C sales')],2,'Understanding triggers lets you time outreach for maximum relevance and urgency.'),
         q('hard','mcq_single','What is the challenger sale methodology?',[opt('a','Always offering the lowest price'),opt('b','A sales approach where the rep teaches the prospect something new about their business, tailors the pitch to stakeholder priorities, and takes control of the conversation — rather than just building rapport',true),opt('c','Focusing only on relationship-building'),opt('d','Using aggressive cold-calling tactics')],2,'CEB research found Challenger reps outperform relationship builders, especially in complex sales.'),
@@ -692,6 +712,11 @@ router.post('/admin/questions/seed-built-in', auth, allowRoles('admin', 'super_a
         q('medium','mcq_single','What is the purpose of a discovery call in B2B sales?',[opt('a','To pitch the product immediately'),opt('b','To qualify the prospect by understanding their current situation, pain points, decision-making process, budget, and timeline — before investing time in a full demo or proposal',true),opt('c','To negotiate pricing'),opt('d','To close the deal in a single call')],1,'Good discovery prevents wasted effort on poorly-fit prospects and tailors demos to real needs.'),
       ],
       Marketing: [
+        // easy
+        q('easy','mcq_single','What does SEO stand for?',[opt('a','Social Engagement Optimization'),opt('b','Search Engine Optimization: the practice of improving a website\'s visibility in organic (non-paid) search engine results',true),opt('c','Sales Email Outreach'),opt('d','Sponsored Event Operations')],1,'SEO drives free, sustainable traffic by ranking higher for relevant search queries.'),
+        q('easy','mcq_single','What is a target audience in marketing?',[opt('a','All internet users'),opt('b','The specific group of people most likely to buy a product or service, defined by demographics, interests, or behaviors',true),opt('c','Only existing customers'),opt('d','The marketing team itself')],1,'Defining a target audience helps allocate marketing spend more efficiently.'),
+        q('easy','mcq_single','What is the main difference between organic and paid social media reach?',[opt('a','No difference'),opt('b','Organic reach is unpaid exposure through normal posts and shares; paid reach is audience exposure bought through advertising spend',true),opt('c','Paid reach is always more effective'),opt('d','Organic reach only applies to email')],1,'Organic builds long-term brand equity; paid provides faster, scalable reach.'),
+        // hard
         q('hard','mcq_single','What is the difference between a lead, an MQL, and an SQL?',[opt('a','They are all the same thing'),opt('b','A lead is any contact; an MQL (Marketing Qualified Lead) meets marketing criteria (e.g., downloaded content, visited pricing) indicating interest; an SQL (Sales Qualified Lead) has been vetted by sales as ready for a sales conversation',true),opt('c','MQL and SQL only apply to email marketing'),opt('d','SQLs are generated by paid ads only')],2,'Aligning MQL/SQL definitions between marketing and sales reduces friction and improves pipeline quality.'),
         q('hard','mcq_single','What is attribution modelling and why does it matter for marketing budgets?',[opt('a','A way to name ad campaigns'),opt('b','A framework to assign credit to each touchpoint in a customer\'s journey (first-touch, last-touch, linear, time-decay, data-driven) so budget can be allocated to the channels that actually drive conversions',true),opt('c','A social media scheduling tool'),opt('d','Only relevant for e-commerce')],2,'Wrong attribution leads to over-investing in the wrong channels; data-driven attribution is most accurate.'),
         q('hard','mcq_single','What is a CAC:LTV ratio, and what does a healthy ratio look like?',[opt('a','Click-Through-Rate versus Landing page views'),opt('b','Customer Acquisition Cost vs Lifetime Value; a healthy ratio is 1:3 or better (spend $1 to acquire a customer who generates $3+ in value) — below 1:3 means marketing may not be profitable',true),opt('c','Cost per Ad Click divided by total revenue'),opt('d','Only applicable to SaaS businesses')],2,'LTV:CAC is the most fundamental profitability metric for growth marketing.'),
@@ -700,6 +725,11 @@ router.post('/admin/questions/seed-built-in', auth, allowRoles('admin', 'super_a
         q('medium','mcq_single','What does "top of funnel" content typically aim to do?',[opt('a','Close deals immediately'),opt('b','Raise awareness and attract a broad audience who may not yet know they have a problem or need — educational blogs, social posts, short videos, and SEO-driven content are common formats',true),opt('c','Convert free trials to paid'),opt('d','Re-engage churned customers')],1,'ToFu content is measured by reach, impressions, and organic traffic, not direct revenue.'),
       ],
       HR: [
+        // easy
+        q('easy','mcq_single','What does KPI stand for in an HR context?',[opt('a','Key Personnel Index'),opt('b','Key Performance Indicator: a measurable value that tracks how effectively an individual, team, or organization is achieving key objectives',true),opt('c','Known Process Inventory'),opt('d','Knowledge Platform Interface')],1,'HR KPIs include metrics like time-to-hire, turnover rate, and employee satisfaction scores.'),
+        q('easy','mcq_single','What is an onboarding process?',[opt('a','The resignation procedure'),opt('b','The process of integrating a new employee into an organization — covering orientation, training, paperwork, and culture introduction — to help them become productive quickly',true),opt('c','A payroll system'),opt('d','The annual performance review cycle')],1,'Effective onboarding improves retention; poor onboarding increases early attrition.'),
+        q('easy','mcq_single','What is the primary purpose of a job description?',[opt('a','To set the salary budget'),opt('b','To clearly outline the responsibilities, required qualifications, and expectations for a role so candidates can self-assess fit and hiring managers can evaluate applicants consistently',true),opt('c','To track employee leave'),opt('d','To create the employment contract')],1,'Accurate JDs improve application quality and reduce time wasted on unqualified candidates.'),
+        // hard
         q('hard','mcq_single','What is the difference between structured and unstructured job interviews, and which is more predictive of performance?',[opt('a','No meaningful difference'),opt('b','Structured interviews use predetermined, standardised questions scored with a consistent rubric applied to all candidates — meta-analyses show validity ~0.51 vs ~0.38 for unstructured; structured interviews reduce bias and improve predictive accuracy',true),opt('c','Unstructured interviews are more predictive'),opt('d','Structured interviews are only for technical roles')],2,'The Society for Industrial-Organizational Psychology identifies structured interviewing as a top validity predictor.'),
         q('hard','mcq_single','What is a stay interview and how does it differ from an exit interview?',[opt('a','They are the same'),opt('b','A stay interview is a proactive one-on-one with current employees to understand what keeps them engaged and what might cause them to leave — acting on findings before they quit; an exit interview captures reasons after the decision is already made',true),opt('c','Stay interviews are only for new hires'),opt('d','Exit interviews are only for managers')],2,'Stay interviews are higher ROI — they prevent turnover rather than just documenting it.'),
         q('hard','mcq_single','What is the 9-box grid used for in talent management?',[opt('a','Office seating plans'),opt('b','A performance-potential matrix plotting employees on a 3×3 grid (low/medium/high performance × low/medium/high potential) to guide succession planning, development investments, and retention focus for high-potential talent',true),opt('c','Tracking leave requests'),opt('d','Managing payroll bands')],2,'The 9-box helps HR allocate limited development resources to the people most likely to grow.'),
@@ -708,6 +738,11 @@ router.post('/admin/questions/seed-built-in', auth, allowRoles('admin', 'super_a
         tf('A competency-based interview focuses on what the candidate plans to do in hypothetical future situations.', false, 'Competency-based interviews ask for past examples using frameworks like STAR; situational interviews use hypothetical scenarios.'),
       ],
       Communication: [
+        // easy
+        q('easy','mcq_single','What is the main purpose of professional email communication?',[opt('a','To send attachments only'),opt('b','To convey information clearly and concisely in a written format, maintaining a professional tone, proper greeting/closing, and a focused message',true),opt('c','To replace phone calls entirely'),opt('d','To share personal updates')],1,'Email etiquette includes clear subject lines, concise body text, and appropriate tone.'),
+        q('easy','mcq_single','What does "tone" mean in written communication?',[opt('a','The volume of text'),opt('b','The attitude or emotion conveyed through word choice and style — ranging from formal/professional to casual/friendly',true),opt('c','The font size'),opt('d','The number of paragraphs')],1,'Tone affects how the reader perceives the writer\'s intent; mismatch in tone can create misunderstandings.'),
+        q('easy','mcq_single','What is the most important thing to do before sending a business email?',[opt('a','Add emojis for friendliness'),opt('b','Proofread for spelling, grammar, correct recipient, appropriate tone, and a clear call to action',true),opt('c','CC everyone in the team'),opt('d','Use uppercase for emphasis')],1,'A single typo or wrong recipient can damage professional credibility or cause data breaches.'),
+        // hard
         q('hard','mcq_single','What is active listening and how does it differ from passive listening?',[opt('a','No difference'),opt('b','Active listening involves fully concentrating, understanding, and responding — paraphrasing, asking clarifying questions, maintaining eye contact; passive listening is hearing without engaging or processing',true),opt('c','Passive listening involves more questions'),opt('d','Active listening means agreeing with everything said')],2,'Active listening builds trust and ensures accurate understanding.'),
         q('hard','mcq_single','What is the STAR method for answering behavioral interview questions?',[opt('a','A scoring rubric'),opt('b','Situation-Task-Action-Result: a structured framework to give concise, concrete examples — describe the context, your responsibility, specific actions you took, and measurable outcomes',true),opt('c','A conflict resolution model'),opt('d','A presentation framework')],2,'STAR keeps answers focused and evidence-based rather than vague.'),
         q('hard','mcq_single','What is the key difference between assertive and aggressive communication?',[opt('a','No difference'),opt('b','Assertive: expressing needs/opinions clearly while respecting others\' rights; Aggressive: expressing needs in a way that violates others\' rights, dominates, or intimidates',true),opt('c','Aggressive communication is more effective'),opt('d','Assertive communication means never disagreeing')],2,'Assert your needs with "I" statements; aggressive communication damages relationships.'),
@@ -720,7 +755,7 @@ router.post('/admin/questions/seed-built-in', auth, allowRoles('admin', 'super_a
     const tenantId = req.user.role === 'super_admin' ? null
       : (req.user.tenantId ? new mongoose.Types.ObjectId(req.user.tenantId) : null);
 
-    let totalInserted = 0;
+    let totalInserted = 0, totalSkipped = 0;
     const skillsSeeded = [];
 
     for (const [skill, questions] of Object.entries(BUILT_IN)) {
@@ -732,20 +767,28 @@ router.post('/admin/questions/seed-built-in', auth, allowRoles('admin', 'super_a
       const existingSet = new Set(existingTexts.map(t => t.trim().toLowerCase()));
 
       const toInsert = questions
-        .filter(q => !existingSet.has(q.text.trim().toLowerCase()))
-        .map(q => ({ ...q, skill, tenantId: null, isActive: true }));
+        .filter(qItem => !existingSet.has(qItem.text.trim().toLowerCase()))
+        .map(qItem => ({ ...qItem, skill, tenantId: null, isActive: true }));
+
+      const skipped = questions.length - toInsert.length;
+      totalSkipped += skipped;
 
       if (toInsert.length > 0) {
         await SkillQuestion.insertMany(toInsert, { ordered: false });
         totalInserted += toInsert.length;
-        skillsSeeded.push({ skill, inserted: toInsert.length });
+        skillsSeeded.push({ skill, inserted: toInsert.length, skipped });
       }
     }
 
+    const msg = totalInserted > 0
+      ? `Seeded ${totalInserted} new question${totalInserted !== 1 ? 's' : ''} across ${skillsSeeded.length} skill${skillsSeeded.length !== 1 ? 's' : ''}${totalSkipped > 0 ? ` (${totalSkipped} already existed, skipped)` : ''}`
+      : `No new questions added — all ${totalSkipped} questions already exist in the bank`;
+
     res.json({
       success: true,
-      message: `Seeded ${totalInserted} questions across ${skillsSeeded.length} skill${skillsSeeded.length !== 1 ? 's' : ''}`,
+      message: msg,
       totalInserted,
+      totalSkipped,
       skillsSeeded,
     });
   } catch (e) {

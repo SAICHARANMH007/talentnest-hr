@@ -1307,13 +1307,16 @@ export default function AdminAnalytics({ user, onNavigate }) {
         {!recPerfSection.loading && !recPerfSection.error && (() => {
           if (!sortedRecPerf.length) return <div style={{ color: '#94A3B8', textAlign: 'center', padding: 40 }}>No recruiter data in this period</div>;
           const cols = [
-            { key: 'recruiterName',   label: 'Recruiter',    numeric: false },
-            { key: 'jobsAssigned',    label: 'Jobs',         numeric: true  },
-            { key: 'candidatesAdded', label: 'Candidates',   numeric: true  },
-            { key: 'shortlisted',     label: 'Shortlisted',  numeric: true  },
-            { key: 'offers',          label: 'Offers',       numeric: true  },
-            { key: 'hired',           label: 'Hired',        numeric: true  },
-            { key: 'avgDaysToShortlist', label: 'Avg Days→SL', numeric: true },
+            { key: 'recruiterName',      label: 'Recruiter',        numeric: false },
+            { key: 'jobsAssigned',       label: 'Jobs',             numeric: true  },
+            { key: 'candidatesAdded',    label: 'Candidates',       numeric: true  },
+            { key: 'shortlisted',        label: 'Shortlisted',      numeric: true  },
+            { key: 'shortlistRate',      label: 'SL Rate',          numeric: true, pct: true },
+            { key: 'offers',             label: 'Offers',           numeric: true  },
+            { key: 'hired',              label: 'Hired',            numeric: true  },
+            { key: 'conversionRate',     label: 'Hire Rate',        numeric: true, pct: true },
+            { key: 'avgDaysToShortlist', label: 'Avg Days→SL',      numeric: true, days: true },
+            { key: 'avgDaysToHire',      label: 'Avg Days→Hire',    numeric: true, days: true },
           ];
           return (
             <div style={{ overflowX: 'auto' }}>
@@ -1323,7 +1326,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
                     {cols.map(c => (
                       <th key={c.key}
                         onClick={() => c.numeric && toggleSort(c.key)}
-                        style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 700, color: '#0A1628', fontSize: 12, borderBottom: '2px solid #E2E8F0', whiteSpace: 'nowrap', cursor: c.numeric ? 'pointer' : 'default', userSelect: 'none' }}>
+                        style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 700, color: '#0A1628', fontSize: 11, borderBottom: '2px solid #E2E8F0', whiteSpace: 'nowrap', cursor: c.numeric ? 'pointer' : 'default', userSelect: 'none' }}>
                         {c.label}
                         {c.numeric && recSort.col === c.key && (recSort.dir === 'asc' ? ' ▲' : ' ▼')}
                       </th>
@@ -1335,13 +1338,20 @@ export default function AdminAnalytics({ user, onNavigate }) {
                     <tr key={r.recruiterId || i} style={{ borderBottom: '1px solid #F1F5F9' }}
                       onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                      <td style={{ padding: '10px 16px', fontWeight: 600 }}>{r.recruiterName}</td>
-                      <td style={{ padding: '10px 16px', color: '#706E6B' }}>{r.jobsAssigned}</td>
-                      <td style={{ padding: '10px 16px', color: '#0176D3', fontWeight: 700 }}>{r.candidatesAdded}</td>
-                      <td style={{ padding: '10px 16px', color: '#7c3aed', fontWeight: 700 }}>{r.shortlisted}</td>
-                      <td style={{ padding: '10px 16px', color: '#F59E0B', fontWeight: 700 }}>{r.offers}</td>
-                      <td style={{ padding: '10px 16px', color: '#10b981', fontWeight: 700 }}>{r.hired}</td>
-                      <td style={{ padding: '10px 16px', color: r.avgDaysToShortlist > 14 ? '#ef4444' : '#10b981', fontWeight: 700 }}>{r.avgDaysToShortlist}d</td>
+                      <td style={{ padding: '10px 14px', fontWeight: 600 }}>{r.recruiterName}</td>
+                      <td style={{ padding: '10px 14px', color: '#706E6B' }}>{r.jobsAssigned}</td>
+                      <td style={{ padding: '10px 14px', color: '#0176D3', fontWeight: 700 }}>{r.candidatesAdded}</td>
+                      <td style={{ padding: '10px 14px', color: '#7c3aed', fontWeight: 700 }}>{r.shortlisted}</td>
+                      <td style={{ padding: '10px 14px', color: '#7c3aed' }}>{r.shortlistRate ?? 0}%</td>
+                      <td style={{ padding: '10px 14px', color: '#F59E0B', fontWeight: 700 }}>{r.offers}</td>
+                      <td style={{ padding: '10px 14px', color: '#10b981', fontWeight: 700 }}>{r.hired}</td>
+                      <td style={{ padding: '10px 14px', color: (r.conversionRate ?? 0) > 0 ? '#10b981' : '#94A3B8' }}>{r.conversionRate ?? 0}%</td>
+                      <td style={{ padding: '10px 14px', color: r.avgDaysToShortlist == null ? '#94A3B8' : r.avgDaysToShortlist > 14 ? '#ef4444' : '#10b981', fontWeight: 700 }}>
+                        {r.avgDaysToShortlist != null ? `${r.avgDaysToShortlist}d` : '—'}
+                      </td>
+                      <td style={{ padding: '10px 14px', color: r.avgDaysToHire == null ? '#94A3B8' : r.avgDaysToHire > 30 ? '#ef4444' : '#10b981', fontWeight: 700 }}>
+                        {r.avgDaysToHire != null ? `${r.avgDaysToHire}d` : '—'}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
