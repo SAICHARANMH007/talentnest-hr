@@ -754,7 +754,7 @@ export default function App() {
             <Route path="clients" element={<AdminClients user={user} />} />
             <Route path="candidate-requests" element={rk === 'superadmin' ? <SuperAdminCandidateRequests /> : <AdminCandidateRequest user={user} />} />
             <Route path="reported-posts" element={<Suspense fallback={<PageLoader />}><SuperAdminReportedPosts /></Suspense>} />
-            <Route path="audit-logs" element={<SuperAdminAuditLogs />} />
+            <Route path="audit-logs" element={<SuperAdminAuditLogs user={user} />} />
           </>
         )}
 

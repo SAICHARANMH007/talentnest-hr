@@ -35,7 +35,7 @@ function fmt(ts) {
 
 const PAGE_SIZE = 100;
 
-export default function SuperAdminAuditLogs() {
+export default function SuperAdminAuditLogs({ user }) {
   const [logs,    setLogs]    = useState([]);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState('');
@@ -76,7 +76,7 @@ export default function SuperAdminAuditLogs() {
     <div>
       <Toast msg={toast} onClose={() => setToast('')} />
       <PageHeader title="📋 Audit Logs"
-        subtitle={`System-wide activity log · ${pagination.total.toLocaleString()} total events`} />
+        subtitle={`${user?.role === 'super_admin' ? 'Platform-wide' : 'Your org'} activity log · ${pagination.total.toLocaleString()} total events`} />
 
       {/* Filters */}
       <form onSubmit={handleSearch} style={S.row}>
@@ -104,7 +104,7 @@ export default function SuperAdminAuditLogs() {
         )}
       </form>
 
-      <CapLimitBanner total={pagination.total} fetched={logs.length} entity="audit logs" role="super_admin" />
+      <CapLimitBanner total={pagination.total} fetched={logs.length} entity="audit logs" role={user?.role} />
       {error && (
         <div style={{ ...card, background:'rgba(186,5,23,0.06)', border:'1px solid rgba(186,5,23,0.2)', color:'#BA0517', marginBottom:16 }}>
           ❌ {error} <button onClick={load} style={{ ...btnG, marginLeft:12 }}>Retry</button>
