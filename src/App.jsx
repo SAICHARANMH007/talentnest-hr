@@ -742,7 +742,6 @@ export default function App() {
             <Route path="automation" element={<AdminAutomation />} />
             <Route path="custom-fields" element={<AdminCustomFields />} />
             <Route path="customizations" element={<SuperAdminCustomizations />} />
-            <Route path="contact-leads" element={<ContactLeads />} />
             <Route path="recruiters" element={<AdminUsers filterRole="recruiter" isSuperAdmin={rk === 'superadmin'} user={user} />} />
             <Route path="hiring-managers" element={<AdminUsers filterRole="hiring_manager" isSuperAdmin={rk === 'superadmin'} user={user} />} />
             <Route path="interview-kits" element={<AdminInterviewKits user={user} />} />
@@ -755,6 +754,7 @@ export default function App() {
             <Route path="clients" element={<AdminClients user={user} />} />
             <Route path="candidate-requests" element={rk === 'superadmin' ? <SuperAdminCandidateRequests /> : <AdminCandidateRequest user={user} />} />
             <Route path="reported-posts" element={<Suspense fallback={<PageLoader />}><SuperAdminReportedPosts /></Suspense>} />
+            <Route path="audit-logs" element={<SuperAdminAuditLogs />} />
           </>
         )}
 
@@ -769,10 +769,10 @@ export default function App() {
             <Route path="permissions" element={<SuperAdminPermissions />} />
             <Route path="security" element={<SuperAdminSecurity />} />
             <Route path="import-candidates" element={<SuperAdminCandidateImport user={user} />} />
-            <Route path="audit-logs" element={<SuperAdminAuditLogs />} />
+            <Route path="contact-leads" element={<ContactLeads />} />
+            <Route path="drive-approvals" element={<Suspense fallback={<PageLoader />}><AdminDriveApprovals user={user} /></Suspense>} />
             <Route path="playbooks" element={<SuperAdminPlaybooks />} />
             <Route path="blogs" element={<SuperAdminBlogs />} />
-            <Route path="customizations" element={<SuperAdminCustomizations />} />
             <Route path="all-candidates" element={<SuperAdminCandidates />} />
             <Route path="unregistered-candidates" element={<Suspense fallback={<PageLoader />}><SuperAdminUnregisteredCandidates /></Suspense>} />
             <Route path="admins" element={<AdminUsers filterRole="admin" isSuperAdmin={true} user={user} />} />

@@ -1308,6 +1308,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
           if (!sortedRecPerf.length) return <div style={{ color: '#94A3B8', textAlign: 'center', padding: 40 }}>No recruiter data in this period</div>;
           const cols = [
             { key: 'recruiterName',      label: 'Recruiter',        numeric: false },
+            ...(isSuperAdmin ? [{ key: 'orgName', label: 'Org', numeric: false }] : []),
             { key: 'jobsAssigned',       label: 'Jobs',             numeric: true  },
             { key: 'candidatesAdded',    label: 'Candidates',       numeric: true  },
             { key: 'shortlisted',        label: 'Shortlisted',      numeric: true  },
@@ -1339,6 +1340,7 @@ export default function AdminAnalytics({ user, onNavigate }) {
                       onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                       <td style={{ padding: '10px 14px', fontWeight: 600 }}>{r.recruiterName}</td>
+                      {isSuperAdmin && <td style={{ padding: '10px 14px', fontSize: 11, color: '#706E6B', background: '#F8FAFC' }}>{r.orgName || '—'}</td>}
                       <td style={{ padding: '10px 14px', color: '#706E6B' }}>{r.jobsAssigned}</td>
                       <td style={{ padding: '10px 14px', color: '#0176D3', fontWeight: 700 }}>{r.candidatesAdded}</td>
                       <td style={{ padding: '10px 14px', color: '#7c3aed', fontWeight: 700 }}>{r.shortlisted}</td>

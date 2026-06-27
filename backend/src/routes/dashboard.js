@@ -4704,9 +4704,11 @@ router.get('/recruiter-performance', authenticate, allowRoles('admin', 'super_ad
   if (recruiterId) recruiterQuery._id = new mongoose.Types.ObjectId(recruiterId);
 
   // Query 1: all recruiters + Query 2: jobs with assigned recruiters
-  const [recruiters, allJobs] = await Promise.all([
-    User.find(recruiterQuery).select('_id name email').lean(),
+  const isSA = req.user.role === 'super_admin';
+  const [recruiters, allJobs, orgMap] = await Promise.all([
+    User.find(recruiterQuery).select('_id name email tenantId').lean(),
     Job.find({ ...tf, deletedAt: null }).select('_id assignedRecruiters').lean(),
+    isSA ? orgNameMap() : Promise.resolve({}),
   ]);
 
   // Build recruiter → jobIds map
@@ -4816,6 +4818,7 @@ router.get('/recruiter-performance', authenticate, allowRoles('admin', 'super_ad
     return {
       recruiterId    : r._id,
       recruiterName  : r.name,
+      orgName        : isSA ? (orgMap[r.tenantId?.toString()] || 'Unknown Org') : undefined,
       jobsAssigned   : activeJobIds.size,
       candidatesAdded,
       shortlisted,
