@@ -28,6 +28,7 @@ export default function RecruiterTalentMatch({ user }) {
   const [profileCandidate, setProfileCandidate] = useState(null);
   const [jobGridPage, setJobGridPage] = useState(1);
   const [resumeCandidate, setResumeCandidate] = useState(null);
+  const [badgeMap, setBadgeMap] = useState({});
   const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < 640);
@@ -80,7 +81,24 @@ export default function RecruiterTalentMatch({ user }) {
       // Tier B: enrich candidates with platform behavioral signals before scoring
       const { req: apiReq } = await import('../../api/client.js');
       const enriched = await enrichWithPlatformSignals(rawCands, apiReq);
-      setResults(matchCandidatesToJob(job, enriched));
+      const matched = matchCandidatesToJob(job, enriched);
+      setResults(matched);
+      // Fetch badges for all matched candidates (fire-and-forget)
+      setBadgeMap({});
+      Promise.allSettled(
+        matched.map(r => {
+          const cid = r.candidate?.id || r.candidate?._id?.toString();
+          if (!cid) return Promise.resolve(null);
+          return api.getUserSkillBadges(cid).then(res => {
+            const list = Array.isArray(res) ? res : (res?.badges || res?.data || []);
+            return { id: cid, badges: list.filter(b => b.passed) };
+          });
+        })
+      ).then(settled => {
+        const map = {};
+        settled.forEach(r => { if (r.status === 'fulfilled' && r.value) map[r.value.id] = r.value.badges; });
+        setBadgeMap(map);
+      }).catch(() => {});
     } catch (e) {
       setToast(`Matching failed: ${e.message}`);
     }
@@ -339,6 +357,20 @@ export default function RecruiterTalentMatch({ user }) {
                       {r._shortlisted && <Badge label="Shortlisted" color="#2E844A" />}
                       {r._parked && <Badge label="Parked" color="#706E6B" />}
                       {r._reachedOut && <Badge label="Reach Out Sent" color="#0176D3" />}
+                      {(() => {
+                        const cid = r.candidate?.id || r.candidate?._id?.toString();
+                        const bs = cid ? (badgeMap[cid] || []) : [];
+                        const gold   = bs.filter(b => b.badgeLevel === 'gold').length;
+                        const silver = bs.filter(b => b.badgeLevel === 'silver').length;
+                        const bronze = bs.filter(b => b.badgeLevel === 'bronze').length;
+                        return (
+                          <>
+                            {gold   > 0 && <span style={{ background: 'rgba(217,119,6,0.1)',   color: '#D97706', border: '1px solid #FCD34D', borderRadius: 20, padding: '2px 8px', fontSize: 10, fontWeight: 700 }}>🥇 {gold} Gold</span>}
+                            {silver > 0 && <span style={{ background: 'rgba(100,116,139,0.1)', color: '#64748B', border: '1px solid #CBD5E1', borderRadius: 20, padding: '2px 8px', fontSize: 10, fontWeight: 700 }}>🥈 {silver} Silver</span>}
+                            {bronze > 0 && <span style={{ background: 'rgba(146,64,14,0.1)',   color: '#92400E', border: '1px solid #FDE68A', borderRadius: 20, padding: '2px 8px', fontSize: 10, fontWeight: 700 }}>🥉 {bronze} Bronze</span>}
+                          </>
+                        );
+                      })()}
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', color: "#475569", fontSize: 13, fontWeight: 600, marginBottom: 14 }}>

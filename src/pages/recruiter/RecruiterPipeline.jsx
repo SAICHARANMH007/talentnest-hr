@@ -293,6 +293,27 @@ function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onV
   const [tags, setTags] = useState(Array.isArray(app.tags) ? app.tags : []);
   const [showTags, setShowTags] = useState(false);
 
+  // Skill assessment badges (lazy-loaded per card)
+  const [badgeSummary, setBadgeSummary] = useState(null);
+  useEffect(() => {
+    const cid = c?.id || c?._id?.toString();
+    if (!cid) return;
+    api.getUserSkillBadges(cid)
+      .then(res => {
+        const list = Array.isArray(res) ? res : (res?.badges || res?.data || []);
+        const passed = list.filter(b => b.passed);
+        if (passed.length > 0) {
+          setBadgeSummary({
+            total:  passed.length,
+            gold:   passed.filter(b => b.badgeLevel === 'gold').length,
+            silver: passed.filter(b => b.badgeLevel === 'silver').length,
+            bronze: passed.filter(b => b.badgeLevel === 'bronze').length,
+          });
+        }
+      })
+      .catch(() => {});
+  }, [c?.id, c?._id]);
+
   const toggleTag = async (tag) => {
     const newTags = tags.includes(tag) ? tags.filter(t => t !== tag) : [...tags, tag];
     setTags(newTags);
@@ -423,8 +444,17 @@ function CandidateCard({ app, isSelected, onSelect, onMoveStage, onAnyStage, onV
       )}
 
       {c?.skills && (
-        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 8 }}>
           {(Array.isArray(c.skills) ? c.skills : []).map(sk => <Badge key={sk} label={sk.trim()} color="#0154A4" />)}
+        </div>
+      )}
+
+      {badgeSummary && (
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#92400E', marginRight: 2 }}>Assessments:</span>
+          {badgeSummary.gold   > 0 && <span style={{ background: 'rgba(217,119,6,0.1)',   color: '#D97706', border: '1px solid #FCD34D', borderRadius: 20, padding: '2px 8px', fontSize: 10, fontWeight: 700 }}>🥇 {badgeSummary.gold} Gold</span>}
+          {badgeSummary.silver > 0 && <span style={{ background: 'rgba(100,116,139,0.1)', color: '#64748B', border: '1px solid #CBD5E1', borderRadius: 20, padding: '2px 8px', fontSize: 10, fontWeight: 700 }}>🥈 {badgeSummary.silver} Silver</span>}
+          {badgeSummary.bronze > 0 && <span style={{ background: 'rgba(146,64,14,0.1)',   color: '#92400E', border: '1px solid #FDE68A', borderRadius: 20, padding: '2px 8px', fontSize: 10, fontWeight: 700 }}>🥉 {badgeSummary.bronze} Bronze</span>}
         </div>
       )}
 

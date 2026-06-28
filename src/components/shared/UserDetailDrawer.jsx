@@ -60,6 +60,7 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
   const [toast, setToast] = useState('');
   const [isCandidateModel, setIsCandidateModel] = useState(false);
   const [hiredModal, setHiredModal] = useState(null); // { appId, candidateName, jobTitle }
+  const [badges, setBadges] = useState([]);
 
   // Track whether user has started editing
   const userEditedRef = useRef(false);
@@ -127,6 +128,19 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
         }).catch(() => {});
       }
     }).catch(() => {});
+  }, [u]);
+
+  useEffect(() => {
+    let uid = u?.id || u?._id?.toString();
+    if (!uid && typeof u === 'string') uid = u;
+    if (!uid) return;
+    setBadges([]);
+    api.getUserSkillBadges(uid)
+      .then(res => {
+        const list = Array.isArray(res) ? res : (res?.badges || res?.data || []);
+        setBadges(list.filter(b => b.passed));
+      })
+      .catch(() => setBadges([]));
   }, [u]);
 
   useEffect(() => {
@@ -350,6 +364,29 @@ export default function UserDetailDrawer({ user: u, app: initialApp, isSuperAdmi
                 <div style={{ marginTop: 14 }}>
                    <Field label="Skills (comma-separated)" value={form.skills} onChange={v => sf('skills', v)} />
                 </div>
+
+                {badges.length > 0 && (
+                  <div style={{ marginTop: 14, padding: 12, background: 'linear-gradient(135deg,#fffbeb,#fef3c7)', borderRadius: 10, border: '1px solid #fcd34d' }}>
+                    <p style={{ margin: '0 0 10px', fontSize: 10, fontWeight: 800, color: '#92400E', letterSpacing: 1 }}>🏆 SKILL ASSESSMENTS</p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {badges.map((b, i) => {
+                        const TIER = {
+                          gold:   { icon: '🥇', color: '#D97706', bg: 'rgba(217,119,6,0.12)',   border: '#FCD34D' },
+                          silver: { icon: '🥈', color: '#64748B', bg: 'rgba(100,116,139,0.12)', border: '#CBD5E1' },
+                          bronze: { icon: '🥉', color: '#92400E', bg: 'rgba(146,64,14,0.10)',   border: '#FDE68A' },
+                        };
+                        const t = TIER[b.badgeLevel] || TIER.bronze;
+                        return (
+                          <span key={i}
+                            title={`${b.skill} · ${b.percentage != null ? b.percentage + '%' : ''} · ${b.badgeLevel || 'passed'}`}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: t.bg, color: t.color, border: `1px solid ${t.border}`, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>
+                            {t.icon} {b.skill}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {(form.role || u?.role || 'candidate') === 'candidate' && (
                   <div style={{ marginTop: 14, padding: 12, background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
