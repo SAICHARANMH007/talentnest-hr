@@ -398,16 +398,41 @@ router.patch('/:id', ...guard,
       { new: true }
     );
 
-    if (!candidate) {
-      // Fallback: If ID not found in Candidates, check if it's a User ID
-      const user = await User.findById(req.params.id).lean();
-      if (user && user.role === 'candidate') {
-        // Find candidate by email
+    if (!candidate && req.user.role !== 'super_admin') {
+      // Cross-tenant path: self-applied platform candidates have their own tenantId,
+      // but the recruiter has an Application referencing that Candidate._id.
+      // Mirror the same permission check used by GET /api/candidates/:id.
+      const hasApp = await Application.exists({
+        candidateId: req.params.id,
+        tenantId: req.user.tenantId,
+        deletedAt: null,
+      });
+      if (hasApp) {
         candidate = await Candidate.findOneAndUpdate(
-          { email: user.email, tenantId: user.tenantId, deletedAt: null },
+          { _id: req.params.id, deletedAt: null },
           { $set: updates },
           { new: true }
         );
+      }
+    }
+
+    if (!candidate && req.user.role !== 'super_admin') {
+      // Last-resort fallback: req.params.id might be a User._id (Talent Match path).
+      const user = await User.findById(req.params.id).lean();
+      if (user && user.role === 'candidate') {
+        candidate = await Candidate.findOneAndUpdate(
+          { email: user.email, tenantId: req.user.tenantId, deletedAt: null },
+          { $set: updates },
+          { new: true }
+        );
+        // If still not found, the candidate may be cross-tenant too
+        if (!candidate) {
+          candidate = await Candidate.findOneAndUpdate(
+            { email: user.email, deletedAt: null },
+            { $set: updates },
+            { new: true }
+          );
+        }
       }
     }
 
