@@ -592,10 +592,18 @@ router.get('/admin/attempts', auth, allowRoles('admin', 'super_admin'), async (r
 
 router.get('/badges/:userId', auth, async (req, res) => {
   try {
-    const candidateId = new mongoose.Types.ObjectId(req.params.userId);
+    let lookupId = new mongoose.Types.ObjectId(req.params.userId);
+
+    // The caller may pass either a User._id (User model) or a Candidate._id
+    // (Candidate model). SkillAttempt stores candidateId as ref:'User', so we
+    // need to resolve Candidate._id → User._id when applicable.
+    const Candidate = require('../models/Candidate');
+    const linked = await Candidate.findOne({ _id: lookupId, userId: { $ne: null } }).select('userId').lean();
+    if (linked?.userId) lookupId = linked.userId;
+
     // Aggregate: one doc per skill, the most recent submitted attempt
     const rows = await SkillAttempt.aggregate([
-      { $match: { candidateId, status: 'submitted' } },
+      { $match: { candidateId: lookupId, status: 'submitted' } },
       { $sort: { submittedAt: -1 } },
       {
         $group: {

@@ -27,6 +27,7 @@ const _r = createRequire(import.meta.url);
 
 const _authModule   = _r('../src/middleware/auth.js');
 const User          = _r('../src/models/User.js');
+const Candidate     = _r('../src/models/Candidate.js');
 const Organization  = _r('../src/models/Organization.js');
 const Tenant        = _r('../src/models/Tenant.js');
 const SkillQuestion = _r('../src/models/SkillQuestion.js');
@@ -136,6 +137,8 @@ beforeEach(() => {
   vi.spyOn(SkillAttempt, 'countDocuments').mockResolvedValue(10);
   // normalizeSkillName() calls SkillQuestion.findOne — must mock to avoid DB hang
   vi.spyOn(SkillQuestion, 'findOne').mockReturnValue(chainOf({ skill: 'Python' }));
+  // badges route does Candidate.findOne to resolve Candidate._id → User._id
+  vi.spyOn(Candidate, 'findOne').mockReturnValue(chainOf(null));
 
   vi.spyOn(User, 'findById').mockImplementation(id => {
     if (String(id) === CANDIDATE_ID) {

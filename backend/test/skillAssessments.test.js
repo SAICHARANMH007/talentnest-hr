@@ -14,6 +14,8 @@
  * SKILL-H  DELETE /admin/questions/:id   — 404 not found; 200 deletes
  * SKILL-I  POST /admin/questions/bulk    — 400 empty; 201 bulk inserts
  * SKILL-J  GET  /admin/attempts          — 401 no token; 403 candidate; 200 admin
+ * SKILL-K  GET  /badges/:userId          — 401 no token; badges by User._id; Candidate._id
+ *                                           resolved to User._id so recruiter drawer works
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -33,6 +35,7 @@ const _r = createRequire(import.meta.url);
 
 const _authModule    = _r('../src/middleware/auth.js');
 const User           = _r('../src/models/User.js');
+const Candidate      = _r('../src/models/Candidate.js');
 const Organization   = _r('../src/models/Organization.js');
 const Tenant         = _r('../src/models/Tenant.js');
 const SkillQuestion  = _r('../src/models/SkillQuestion.js');
@@ -678,5 +681,72 @@ describe('GET /api/skill-assessments/admin/attempts (SKILL-J)', () => {
     expect(res.status).toBe(200);
     expect(res.body.attempts).toHaveLength(1);
     expect(res.body.total).toBe(1);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SKILL-K  GET /api/skill-assessments/badges/:userId
+//   Proves the Candidate._id → User._id resolution fix so recruiters can see
+//   badges when opening a candidate profile from the pipeline/talent-match.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('GET /api/skill-assessments/badges/:userId (SKILL-K)', () => {
+  const USER_OID      = new mongoose.Types.ObjectId();
+  const CANDIDATE_OID = new mongoose.Types.ObjectId();
+
+  const BADGE_ROW = [{ skill: 'JavaScript', passed: true, badgeLevel: 'gold', percentage: 92, score: 9, maxScore: 10, percentile: 88, submittedAt: new Date() }];
+
+  function stubAggregate(rows) {
+    vi.spyOn(SkillAttempt, 'aggregate').mockResolvedValue(rows);
+  }
+
+  it('returns 401 with no token', async () => {
+    const res = await request(buildApp()).get(`/api/skill-assessments/badges/${USER_OID}`);
+    expect(res.status).toBe(401);
+  });
+
+  it('returns badges when given a User._id directly', async () => {
+    // No Candidate doc linked → Candidate.findOne returns null → use original id
+    vi.spyOn(Candidate, 'findOne').mockReturnValue({ select: vi.fn().mockReturnThis(), lean: vi.fn().mockResolvedValue(null) });
+    stubAggregate(BADGE_ROW);
+
+    const res = await request(buildApp())
+      .get(`/api/skill-assessments/badges/${USER_OID}`)
+      .set('Authorization', `Bearer ${makeToken('recruiter', { id: ADMIN_ID })}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.badges).toHaveLength(1);
+    expect(res.body.badges[0].skill).toBe('JavaScript');
+    expect(res.body.badges[0].badgeLevel).toBe('gold');
+  });
+
+  it('resolves Candidate._id → User._id so badges are found', async () => {
+    // Candidate.findOne returns a doc with userId = USER_OID
+    vi.spyOn(Candidate, 'findOne').mockReturnValue({
+      select: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue({ userId: USER_OID }),
+    });
+    stubAggregate(BADGE_ROW);
+
+    const res = await request(buildApp())
+      .get(`/api/skill-assessments/badges/${CANDIDATE_OID}`)
+      .set('Authorization', `Bearer ${makeToken('recruiter', { id: ADMIN_ID })}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.badges).toHaveLength(1);
+    // Verify aggregate was called with resolved User._id, not Candidate._id
+    const matchStage = SkillAttempt.aggregate.mock.calls[0][0][0].$match;
+    expect(matchStage.candidateId.toString()).toBe(USER_OID.toString());
+  });
+
+  it('returns empty array when candidate has no assessments', async () => {
+    vi.spyOn(Candidate, 'findOne').mockReturnValue({ select: vi.fn().mockReturnThis(), lean: vi.fn().mockResolvedValue(null) });
+    stubAggregate([]);
+
+    const res = await request(buildApp())
+      .get(`/api/skill-assessments/badges/${USER_OID}`)
+      .set('Authorization', `Bearer ${makeToken('recruiter', { id: ADMIN_ID })}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.badges).toEqual([]);
   });
 });
