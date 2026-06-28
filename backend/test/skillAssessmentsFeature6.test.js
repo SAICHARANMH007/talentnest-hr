@@ -134,6 +134,8 @@ beforeEach(() => {
   }));
   vi.spyOn(Tenant, 'find').mockReturnValue(chainOf([]));
   vi.spyOn(SkillAttempt, 'countDocuments').mockResolvedValue(10);
+  // normalizeSkillName() calls SkillQuestion.findOne — must mock to avoid DB hang
+  vi.spyOn(SkillQuestion, 'findOne').mockReturnValue(chainOf({ skill: 'Python' }));
 
   vi.spyOn(User, 'findById').mockImplementation(id => {
     if (String(id) === CANDIDATE_ID) {

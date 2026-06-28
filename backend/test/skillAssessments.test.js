@@ -142,6 +142,8 @@ beforeEach(() => {
   }));
   vi.spyOn(Tenant, 'find').mockReturnValue(chainOf([]));
   vi.spyOn(SkillAttempt, 'countDocuments').mockResolvedValue(10);
+  // normalizeSkillName() calls SkillQuestion.findOne — must mock to avoid DB hang
+  vi.spyOn(SkillQuestion, 'findOne').mockReturnValue(chainOf({ skill: 'JavaScript' }));
 
   vi.spyOn(User, 'findById').mockImplementation((id) => {
     const s = String(id);
@@ -164,7 +166,8 @@ describe('GET /api/skill-assessments/skills (SKILL-A)', () => {
   });
 
   it('returns skills list for authenticated user', async () => {
-    // /skills now uses aggregate to filter skills with enough hard+medium questions
+    // Candidate path uses aggregate (admin path uses distinct — separate concern).
+    // We test the aggregate path here, which filters skills by hard+medium question counts.
     vi.spyOn(SkillQuestion, 'aggregate').mockResolvedValue([
       { _id: { skill: 'JavaScript', difficulty: 'hard' }, count: 3 },
       { _id: { skill: 'JavaScript', difficulty: 'medium' }, count: 3 },
@@ -174,7 +177,7 @@ describe('GET /api/skill-assessments/skills (SKILL-A)', () => {
 
     const res = await request(buildApp())
       .get('/api/skill-assessments/skills')
-      .set('Authorization', `Bearer ${makeToken('admin')}`);
+      .set('Authorization', `Bearer ${makeToken('candidate')}`);
 
     expect(res.status).toBe(200);
     expect(res.body.skills).toEqual(['JavaScript', 'Python']);
