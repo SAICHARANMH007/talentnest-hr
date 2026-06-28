@@ -25,6 +25,7 @@ const asyncHandler       = require('../utils/asyncHandler');
 const AppError           = require('../utils/AppError');
 const { uploadBuffer }   = require('../utils/cloudinaryUpload');
 const { syncProfile }    = require('../utils/syncProfile');
+const { encryptDescriptor, encryptDescriptors, loadDescriptor, loadDescriptors } = require('../utils/faceEncryption');
 const authService        = require('../services/auth.service');
 const logger             = require('../middleware/logger');
 const Otp                = require('../models/Otp');
@@ -353,7 +354,14 @@ router.post('/enroll', ...guard, asyncHandler(async (req, res) => {
   const bestUrl = uploadedUrls[bestPhotoIndex] || uploadedUrls[0];
   const now = new Date();
 
-  // Persist to User
+  // Encrypt descriptor(s) for at-rest protection (AES-256-GCM via FACE_ENCRYPTION_KEY)
+  const descriptorEncrypted  = encryptDescriptor(descriptor);
+  const galleryRaw = Array.isArray(descriptors) && descriptors.length >= 2
+    ? descriptors.slice(0, 5).map(d => Array.from(d))
+    : null;
+  const galleryEncrypted = galleryRaw ? encryptDescriptors(galleryRaw) : null;
+
+  // Persist to User — dual-write: raw (backward compat) + encrypted (preferred)
   const updatePayload = {
     faceEnrolled          : true,
     faceConsentGiven      : true,                    // backward compat flag
@@ -361,11 +369,12 @@ router.post('/enroll', ...guard, asyncHandler(async (req, res) => {
     faceConsentProctoring : consentProctoring === true, // granular: assessment monitoring consent
     faceConsentAt         : now,
     faceEnrolledAt        : now,
-    faceDescriptor        : descriptor,
-    // k-NN gallery: individual per-pose descriptors (up to 5) for per-frame matching at login
-    ...(Array.isArray(descriptors) && descriptors.length >= 2
-      ? { faceDescriptors: descriptors.slice(0, 5).map(d => Array.from(d)) }
-      : {}),
+    faceDescriptor        : descriptor,              // raw — kept for backward compat read paths
+    // Encrypted copy (null when FACE_ENCRYPTION_KEY not configured — no-op)
+    ...(descriptorEncrypted ? { faceDescriptorEnc: descriptorEncrypted } : {}),
+    // k-NN gallery
+    ...(galleryRaw       ? { faceDescriptors: galleryRaw } : {}),
+    ...(galleryEncrypted ? { faceDescriptorsEnc: galleryEncrypted } : {}),
     faceEnrollmentPhotos: uploadedUrls,
     photoUrl            : bestUrl,
     ...(Array.isArray(landmarks) && landmarks.length > 0 ? { faceLandmarks: landmarks } : {}),
@@ -425,11 +434,14 @@ router.post('/verify', ...guard, asyncHandler(async (req, res) => {
   if (!Array.isArray(descriptor) || descriptor.length < 64 || descriptor.length > 512)
     throw new AppError('Invalid descriptor.', 400);
 
-  const user = await User.findById(req.user.id).select('faceEnrolled faceDescriptor').lean();
-  if (!user?.faceEnrolled || !user?.faceDescriptor?.length)
+  const user = await User.findById(req.user.id)
+    .select('faceEnrolled faceDescriptor faceDescriptorEnc')
+    .lean();
+  const storedDesc = loadDescriptor(user);
+  if (!user?.faceEnrolled || !storedDesc)
     return res.json({ success: true, enrolled: false, passed: false, score: 0 });
 
-  const score = faceSimilarity(descriptor, user.faceDescriptor);
+  const score = faceSimilarity(descriptor, storedDesc);
   const passed = score >= 0.80; // recalibrated: new formula, same person scores 0.83-0.93
 
   res.json({
@@ -439,19 +451,43 @@ router.post('/verify', ...guard, asyncHandler(async (req, res) => {
   });
 }));
 
-// DELETE /api/face/enroll — remove face data (GDPR delete)
+// DELETE /api/face/enroll — remove face data (GDPR / DPDP erasure request)
+// Erases all biometric data from User, Candidate, AND proctoring snapshots from
+// AssessmentSubmission records — leaving no orphaned biometric trace behind.
 router.delete('/enroll', ...guard, asyncHandler(async (req, res) => {
   const uid = String(req.user.id);
-  // $unset removes face data fields; $set marks enrolled=false (can't $unset + $set same field)
-  const unsetFields = { faceDescriptor: 1, faceDescriptors: 1, faceLandmarks: 1, faceEnrollmentPhotos: 1, faceEnrolledAt: 1 };
-  await User.findByIdAndUpdate(uid, { $unset: unsetFields, $set: { faceEnrolled: false } });
+  const unsetFields = {
+    faceDescriptor       : 1,
+    faceDescriptors      : 1,
+    faceDescriptorEnc    : 1,
+    faceDescriptorsEnc   : 1,
+    faceLandmarks        : 1,
+    faceEnrollmentPhotos : 1,
+    faceEnrolledAt       : 1,
+    faceConsentAt        : 1,
+  };
+  const setFields = {
+    faceEnrolled          : false,
+    faceConsentGiven      : false,
+    faceConsentLogin      : false,
+    faceConsentProctoring : false,
+  };
+
+  await User.findByIdAndUpdate(uid, { $unset: unsetFields, $set: setFields });
   if (req.user.email && req.user.tenantId) {
     await Candidate.updateMany(
       { email: req.user.email, tenantId: req.user.tenantId, deletedAt: null },
-      { $unset: unsetFields, $set: { faceEnrolled: false } }
+      { $unset: unsetFields, $set: setFields }
     );
   }
-  logger.audit('Face data deleted', uid, req.user.tenantId, {});
+
+  // Erase proctoring snapshots embedded in past assessment submissions
+  await AssessmentSubmission.updateMany(
+    { candidateId: uid },
+    { $unset: { faceVerifications: 1, faceVerificationSummary: 1 } }
+  );
+
+  logger.audit('Face data erased (user request)', uid, req.user.tenantId, {});
   res.json({ success: true, message: 'Face data removed.' });
 }));
 
@@ -470,7 +506,7 @@ router.post('/proctor-check', ...guard, asyncHandler(async (req, res) => {
   if (!submission) throw new AppError('Submission not found.', 404);
 
   const user = await User.findById(req.user.id)
-    .select('faceEnrolled faceDescriptor faceConsentLogin faceConsentProctoring faceConsentGiven')
+    .select('faceEnrolled faceDescriptor faceDescriptorEnc faceConsentLogin faceConsentProctoring faceConsentGiven')
     .lean();
 
   // Consent enforcement: if user enrolled with the NEW unbundled consent system
@@ -482,13 +518,15 @@ router.post('/proctor-check', ...guard, asyncHandler(async (req, res) => {
     throw new AppError('Assessment monitoring requires separate proctoring consent. Please update your consent in your profile settings.', 403);
   }
 
+  const storedDesc = loadDescriptor(user);
+
   let score = 0;
   let passed = false;
   let snapshotUrl = null;
   const ts = new Date();
 
-  if (user?.faceEnrolled && user?.faceDescriptor?.length && Array.isArray(descriptor) && descriptor.length >= 64) {
-    score = faceSimilarity(descriptor, user.faceDescriptor);
+  if (user?.faceEnrolled && storedDesc && Array.isArray(descriptor) && descriptor.length >= 64) {
+    score = faceSimilarity(descriptor, storedDesc);
     passed = score >= 0.76; // recalibrated: lenient for proctoring (movement/lighting variance)
   } else if (!user?.faceEnrolled) {
     // User not enrolled — treat as passed (can't verify) but record the check
@@ -558,6 +596,93 @@ router.post('/consent', ...guard, asyncHandler(async (req, res) => {
 }));
 
 // ── Admin routes ─────────────────────────────────────────────────────────────
+
+// POST /api/face/admin/purge-retention — purge biometric data older than FACE_RETENTION_DAYS
+// super_admin only. Respects FACE_RETENTION_DAYS env var (default: 730 days = 2 years).
+// Body: { dryRun?: boolean }   dryRun=true returns count without writing.
+router.post('/admin/purge-retention', ...guard,
+  allowRoles('super_admin'),
+  asyncHandler(async (req, res) => {
+    const retentionDays = parseInt(process.env.FACE_RETENTION_DAYS || '730', 10);
+    const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
+    const dryRun = req.body?.dryRun === true;
+
+    const expired = await User.find({
+      faceEnrolled            : true,
+      faceEnrolledAt          : { $lt: cutoff },
+      faceRetentionPurgedAt   : null,
+      deletedAt               : null,
+    }).select('_id email tenantId faceEnrolledAt').lean();
+
+    if (dryRun) {
+      return res.json({
+        success: true,
+        dryRun: true,
+        retentionDays,
+        cutoff,
+        expiredCount: expired.length,
+        message: `${expired.length} user(s) have face data older than ${retentionDays} days and would be purged.`,
+      });
+    }
+
+    const faceUnset = {
+      faceDescriptor       : 1,
+      faceDescriptors      : 1,
+      faceDescriptorEnc    : 1,
+      faceDescriptorsEnc   : 1,
+      faceLandmarks        : 1,
+      faceEnrollmentPhotos : 1,
+    };
+    const now = new Date();
+    let purgedCount = 0;
+
+    for (const u of expired) {
+      await User.findByIdAndUpdate(u._id, {
+        $unset: faceUnset,
+        $set: {
+          faceEnrolled          : false,
+          faceConsentGiven      : false,
+          faceConsentLogin      : false,
+          faceConsentProctoring : false,
+          faceRetentionPurgedAt : now,
+        },
+      });
+      // Mirror to Candidate
+      if (u.email && u.tenantId) {
+        await Candidate.updateMany(
+          { email: u.email, tenantId: u.tenantId, deletedAt: null },
+          {
+            $unset: faceUnset,
+            $set: {
+              faceEnrolled: false, faceConsentGiven: false,
+              faceConsentLogin: false, faceConsentProctoring: false,
+              faceRetentionPurgedAt: now,
+            },
+          }
+        );
+      }
+      // Erase proctoring snapshots
+      await AssessmentSubmission.updateMany(
+        { candidateId: String(u._id) },
+        { $unset: { faceVerifications: 1, faceVerificationSummary: 1 } }
+      );
+      purgedCount++;
+    }
+
+    logger.audit('Face retention purge completed', req.user.id, null, {
+      retentionDays, cutoff, purgedCount,
+    });
+
+    res.json({
+      success: true,
+      dryRun: false,
+      retentionDays,
+      cutoff,
+      purgedCount,
+      message: `Purged face data for ${purgedCount} user(s) enrolled before ${cutoff.toISOString()}.`,
+    });
+  })
+);
 
 // GET /api/face/admin/duplicates — list pending duplicate alerts
 router.get('/admin/duplicates', ...guard,
@@ -786,7 +911,7 @@ router.post('/login', faceLoginLimiter, asyncHandler(async (req, res) => {
     faceEnrolled: true,
     isActive  : { $ne: false },
     deletedAt : null,
-  }).select('_id name email role tenantId tenantType faceDescriptor faceDescriptors faceEnrolled isActive failedLoginAttempts lockUntil photoUrl mustChangePassword').lean();
+  }).select('_id name email role tenantId tenantType faceDescriptor faceDescriptorEnc faceDescriptors faceDescriptorsEnc faceEnrolled isActive failedLoginAttempts lockUntil photoUrl mustChangePassword').lean();
 
   // Account lockout check (before any comparison to prevent timing oracle)
   if (user?.lockUntil && new Date(user.lockUntil) > new Date()) {
@@ -797,8 +922,10 @@ router.post('/login', faceLoginLimiter, asyncHandler(async (req, res) => {
   }
 
   // Always compute similarity (prevents timing attacks on non-enrolled emails)
+  // Use loadDescriptor() which prefers encrypted descriptor when available
   const DUMMY_DESC = new Array(descriptor.length).fill(0.01);
-  const storedDesc = user?.faceDescriptor?.length >= 64 ? user.faceDescriptor : DUMMY_DESC;
+  const rawStoredDesc = loadDescriptor(user);
+  const storedDesc    = rawStoredDesc || DUMMY_DESC;
 
   // Always compute averaged-descriptor score (used as guard + for logging)
   const score = faceSimilarity(descriptor, storedDesc);
@@ -814,8 +941,7 @@ router.post('/login', faceLoginLimiter, asyncHandler(async (req, res) => {
   // k-NN gallery matching (preferred when client sends individual frames + server has gallery)
   // Each live capture frame is scored against every enrolled frame; best match wins.
   // Majority rule: 2-of-3 frames must independently pass before login is granted.
-  const gallery = Array.isArray(user?.faceDescriptors) && user.faceDescriptors.length >= 2
-    ? user.faceDescriptors : null;
+  const gallery = loadDescriptors(user);
   const frames  = Array.isArray(req.body.frames) && req.body.frames.length >= 2
     ? req.body.frames : null;
 

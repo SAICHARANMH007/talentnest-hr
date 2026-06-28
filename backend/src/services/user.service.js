@@ -8,6 +8,8 @@ const { sendEmailWithRetry, templates } = require('../utils/email');
 const logger = require('../middleware/logger');
 const normalize = require('../utils/normalize');
 const jobService = require('./job.service');
+const Candidate = require('../models/Candidate');
+const AssessmentSubmission = require('../models/AssessmentSubmission');
 
 /**
  * UserService — Professional Logic for Identity Management
@@ -21,14 +23,57 @@ class UserService {
   }
 
   /**
-   * Soft Delete User
+   * Soft Delete User — cascade-wipes all biometric data (DPDP / GDPR obligation).
+   * Biometric descriptors, landmarks, enrollment photos, consent flags, and any
+   * proctoring snapshots embedded in AssessmentSubmission records are all erased.
    */
   async softDelete(id) {
-    const user = await User.findByIdAndUpdate(id, {
-      $set: { deletedAt: new Date(), isActive: false }
-    }, { new: true });
+    const user = await User.findById(id).select('email tenantId faceEnrolled').lean();
     if (!user) throw new AppError('User not found', 404);
-    return user;
+
+    // Fields to erase from the record
+    const faceUnset = {
+      faceDescriptor       : 1,
+      faceDescriptors      : 1,
+      faceDescriptorEnc    : 1,
+      faceDescriptorsEnc   : 1,
+      faceLandmarks        : 1,
+      faceEnrollmentPhotos : 1,
+      faceEnrolledAt       : 1,
+      faceConsentAt        : 1,
+    };
+    const faceSet = {
+      faceEnrolled          : false,
+      faceConsentGiven      : false,
+      faceConsentLogin      : false,
+      faceConsentProctoring : false,
+      deletedAt             : new Date(),
+      isActive              : false,
+    };
+
+    await User.findByIdAndUpdate(id, { $unset: faceUnset, $set: faceSet }, { new: true });
+
+    // Mirror wipe to Candidate collection (same email+tenant)
+    if (user.email && user.tenantId) {
+      await Candidate.updateMany(
+        { email: user.email, tenantId: user.tenantId, deletedAt: null },
+        { $unset: faceUnset, $set: { faceEnrolled: false, faceConsentGiven: false, faceConsentLogin: false, faceConsentProctoring: false } }
+      );
+    }
+
+    // Erase proctoring snapshots from AssessmentSubmission records
+    if (user.faceEnrolled) {
+      await AssessmentSubmission.updateMany(
+        { candidateId: String(id) },
+        { $unset: { faceVerifications: 1, faceVerificationSummary: 1 } }
+      );
+    }
+
+    logger.audit('Face data cascade-wiped on account deletion', id, user.tenantId, { email: user.email });
+
+    // Return the updated user document
+    const updated = await User.findById(id).lean();
+    return updated;
   }
 
   /**

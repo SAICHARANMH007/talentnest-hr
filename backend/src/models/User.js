@@ -76,6 +76,11 @@ const userSchema = new mongoose.Schema({
   // Granular biometric consent (DPDP Act / GDPR requirement — unbundled per purpose)
   faceConsentLogin      : { type: Boolean, default: false }, // consent for identity verification and face login
   faceConsentProctoring : { type: Boolean, default: false }, // separate consent for assessment monitoring
+  // Encrypted descriptor storage (AES-256-GCM) — { iv, tag, data } hex strings
+  faceDescriptorEnc     : { type: mongoose.Schema.Types.Mixed, default: null },
+  faceDescriptorsEnc    : { type: [mongoose.Schema.Types.Mixed], default: undefined },
+  // Retention tracking
+  faceRetentionPurgedAt : { type: Date, default: null },
 
   phone       : { type: String, trim: true },
   title       : { type: String, trim: true },

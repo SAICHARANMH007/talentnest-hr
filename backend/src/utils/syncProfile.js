@@ -20,6 +20,7 @@ async function syncProfile(email, updates, tenantId) {
     'name', 'phone', 'location', 'title', 'summary', 'skills',
     'experience', 'isFresher', 'college', 'linkedinUrl', 'resumeUrl', 'videoResumeUrl', 'photoUrl',
     'faceEnrolled', 'faceDescriptor', 'faceLandmarks', 'faceEnrollmentPhotos', 'faceConsentGiven', 'faceConsentAt', 'faceEnrolledAt', 'faceConsentLogin', 'faceConsentProctoring',
+    'faceDescriptorEnc', 'faceDescriptorsEnc', 'faceRetentionPurgedAt',
     'currentCompany', 'currentCTC', 'expectedCTC', 'relevantExperience',
     'preferredLocation', 'availability', 'noticePeriodDays',
     'candidateStatus', 'certifications', 'client', 'ta',

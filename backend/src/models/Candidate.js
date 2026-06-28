@@ -39,6 +39,11 @@ const candidateSchema = new mongoose.Schema({
   // Granular biometric consent — synced from User via syncProfile
   faceConsentLogin      : { type: Boolean, default: false },
   faceConsentProctoring : { type: Boolean, default: false },
+  // Encrypted descriptor storage (AES-256-GCM) — synced from User
+  faceDescriptorEnc     : { type: mongoose.Schema.Types.Mixed, default: null },
+  faceDescriptorsEnc    : { type: [mongoose.Schema.Types.Mixed], default: undefined },
+  // Retention tracking
+  faceRetentionPurgedAt : { type: Date, default: null },
 
   // ── HR placement fields ─────────────────────────────────────────────────────
   currentCompany     : { type: String, trim: true },
