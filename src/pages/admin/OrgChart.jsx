@@ -47,6 +47,12 @@ function PersonCard({ user: u, isCurrentUser }) {
       <div style={{ fontSize:11, color:'#94A3B8', marginBottom:8, wordBreak:'break-all' }}>{u.email}</div>
       {/* Role badge */}
       <span style={{ fontSize:10, fontWeight:800, color:'#fff', background:rc.badge, padding:'2px 10px', borderRadius:20, letterSpacing:0.3 }}>{rc.label}</span>
+      {/* Pending invite indicator for users who have not yet logged in */}
+      {u.isActive === false && (
+        <div style={{ marginTop:6, fontSize:9, fontWeight:700, color:'#92400E', background:'#FEF3C7', border:'1px solid #FCD34D', padding:'2px 8px', borderRadius:20, display:'inline-block' }}>
+          ⏳ Pending Invite
+        </div>
+      )}
       {/* Stats row — only shown on recruiter cards (leaderboard data) */}
       {u.role === 'recruiter' && (
         <div style={{ display:'flex', gap:10, justifyContent:'center', marginTop:10, flexWrap:'wrap' }}>
@@ -103,8 +109,8 @@ export default function OrgChart({ user }) {
     setLoading(true); setError('');
     Promise.all([
       api.getMyOrg().catch(() => null),
-      api.getUsers({ role: 'admin',     limit: 10000000, isActive: true }).catch(() => []),
-      api.getUsers({ role: 'recruiter', limit: 10000000, isActive: true }).catch(() => []),
+      api.getUsers({ role: 'admin',     limit: 10000000 }).catch(() => []),
+      api.getUsers({ role: 'recruiter', limit: 10000000 }).catch(() => []),
       // Active jobs — used for KPI tile count only
       api.getJobs({ limit: 10000, status: 'active' }).catch(() => []),
       // Leaderboard — server-side aggregation of actual applications per recruiter (accurate counts)

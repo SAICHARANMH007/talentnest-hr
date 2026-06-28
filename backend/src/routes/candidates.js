@@ -699,7 +699,18 @@ router.get('/:id/full-timeline', ...guard, asyncHandler(async (req, res) => {
 
   const candLookup = { _id: candId, deletedAt: null };
   if (req.user.role !== 'super_admin') candLookup.tenantId = tenantId;
-  const candidate = await Candidate.findOne(candLookup).select('name email phone tags source createdAt').lean();
+  let candidate = await Candidate.findOne(candLookup).select('name email phone tags source createdAt').lean();
+
+  // Cross-tenant fallback: platform candidates self-apply with their own tenantId
+  // but their Application is stored under the recruiter's tenant. Mirror the same
+  // fallback that GET /:id uses so both endpoints are consistent.
+  if (!candidate && req.user.role !== 'super_admin') {
+    const hasApp = await Application.exists({ candidateId: candId, tenantId, deletedAt: null });
+    if (hasApp) {
+      candidate = await Candidate.findOne({ _id: candId, deletedAt: null }).select('name email phone tags source createdAt').lean();
+    }
+  }
+
   if (!candidate) throw new AppError('Candidate not found.', 404);
 
   // Super admins can see the full cross-tenant history; other roles only see
