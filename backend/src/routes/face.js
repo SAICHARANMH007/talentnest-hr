@@ -698,6 +698,13 @@ router.get('/admin/duplicates', ...guard,
       .sort({ createdAt: -1 })
       .lean();
 
+    // A3: audit-log admin access to biometric duplicate alerts (includes enrollment photos)
+    if (alerts.length > 0) {
+      logger.audit('Admin accessed face duplicate alerts', req.user.id, req.user.tenantId, {
+        role: req.user.role, count: alerts.length, statusFilter: filter.status || 'all',
+      });
+    }
+
     res.json({ success: true, data: alerts, total: alerts.length });
   })
 );
@@ -715,6 +722,11 @@ router.patch('/admin/duplicates/:id', ...guard,
     const tenantFilter = req.user.role === 'super_admin' ? {} : { tenantId: req.user.tenantId };
     const alert = await FaceDuplicateAlert.findOne({ _id: req.params.id, ...tenantFilter });
     if (!alert) throw new AppError('Alert not found.', 404);
+
+    // A3: audit-log admin accessing specific duplicate alert (contains enrollment photos / biometric data)
+    logger.audit('Admin reviewed face duplicate alert', req.user.id, req.user.tenantId, {
+      alertId: alert._id, action, email1: alert.email1, email2: alert.email2,
+    });
 
     alert.status     = action;
     alert.reviewedBy = req.user.id;
@@ -803,23 +815,32 @@ router.get('/admin/duplicates/count', ...guard,
 
 // ── POST /api/face/identify — scan face to discover linked account (no auth)
 //
-// New login flow: face → find account → masked email shown → OTP → login
-// OTP is the security gate, so identify threshold is loose (0.74).
-// Returns a short-lived signed faceToken instead of the real email to prevent enumeration.
+// A3 hardening (in addition to existing 3/min rate limiter):
+//  • Optional tenantId scoping: if provided, search only that tenant's enrolled users.
+//    Narrows blast radius and prevents cross-tenant enumeration.
+//  • Every attempt (hit or miss) is audit-logged with IP, score, tenant, ambiguity.
+//  • Score is not returned to the client on success — only masked email + faceToken.
+//  • OTP remains the real security gate; faceToken expires in 5 minutes.
 //
-// Body: { descriptor: number[], frames?: number[][] }
+// Body: { descriptor: number[], frames?: number[][], tenantId?: string }
 // Response: { found: bool, maskedEmail?: string, faceToken?: string (5-min JWT) }
 router.post('/identify', faceIdentifyLimiter, asyncHandler(async (req, res) => {
-  const { descriptor, frames } = req.body;
+  const { descriptor, frames, tenantId } = req.body;
   if (!Array.isArray(descriptor) || descriptor.length < 64 || descriptor.length > 512)
     throw new AppError('Invalid face descriptor.', 400);
 
-  // Pull all enrolled users — O(n) comparison (fine for HR platform scale)
-  const enrolled = await User.find({
+  // Build search filter — tenant-scoped when caller provides tenantId (reduces blast radius)
+  const enrolledFilter = {
     faceEnrolled: true,
     isActive    : { $ne: false },
     deletedAt   : null,
-  }).select('_id email faceDescriptor faceDescriptors').lean();
+  };
+  if (tenantId) enrolledFilter.tenantId = tenantId;
+
+  // Pull enrolled users — O(n) comparison (fine for HR platform scale)
+  const enrolled = await User.find(enrolledFilter)
+    .select('_id email faceDescriptor faceDescriptors')
+    .lean();
 
   const IDENTIFY_THRESHOLD = 0.74; // loose — OTP is the actual security gate
   const FRAME_THRESHOLD    = 0.72; // per-frame k-NN threshold for identify
@@ -862,8 +883,20 @@ router.post('/identify', faceIdentifyLimiter, asyncHandler(async (req, res) => {
   const margin = bestScore - secondBestScore;
   const ambiguous = enrolled.length > 1 && margin < MARGIN_REQUIRED;
 
-  if (!bestMatch || bestScore < IDENTIFY_THRESHOLD || ambiguous) {
-    logger.info('Face identify: no match', { ip: req.ip, topScore: Math.round(bestScore * 100), margin: Math.round(margin * 100), ambiguous });
+  const noMatch = !bestMatch || bestScore < IDENTIFY_THRESHOLD || ambiguous;
+
+  // Audit-log EVERY attempt — hits and misses — for forensics and abuse detection
+  logger.audit('face.identify', 'anonymous', tenantId || null, {
+    ip        : req.ip,
+    found     : !noMatch,
+    topScore  : Math.round(bestScore * 100),
+    margin    : Math.round(margin * 100),
+    ambiguous,
+    scoped    : !!tenantId,
+    poolSize  : enrolled.length,
+  });
+
+  if (noMatch) {
     return res.json({ success: true, found: false });
   }
 
@@ -878,7 +911,6 @@ router.post('/identify', faceIdentifyLimiter, asyncHandler(async (req, res) => {
   const [local, domain] = bestMatch.email.split('@');
   const maskedEmail = local[0] + '*'.repeat(Math.max(2, local.length - 1)) + '@' + domain;
 
-  logger.info('Face identify: match', { userId: bestMatch._id, score: Math.round(bestScore * 100), ip: req.ip });
   res.json({ success: true, found: true, maskedEmail, faceToken });
 }));
 

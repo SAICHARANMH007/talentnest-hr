@@ -124,6 +124,7 @@ function makeAlert(overrides = {}) {
 
 function buildApp() {
   const app = express();
+  app.set('trust proxy', true); // enables X-Forwarded-For so rate-limiter uses it as the key
   app.use(express.json({ limit: '20mb' }));
   app.use(cookieParser(COOKIE_SECRET));
   app.use('/api/face', faceRouter);
@@ -132,6 +133,10 @@ function buildApp() {
   });
   return app;
 }
+
+// Unique IP counter — each call returns a fresh IP so rate-limiters don't accumulate across tests
+let _ipCounter = 1;
+function freshIp() { return `10.0.${Math.floor(_ipCounter / 256)}.${(_ipCounter++) % 256}`; }
 
 // ── Per-test setup ─────────────────────────────────────────────────────────────
 beforeEach(() => {
@@ -427,6 +432,7 @@ describe('POST /api/face/identify — face identity scan (FACE-J)', () => {
   it('returns 400 for invalid descriptor', async () => {
     const res = await request(buildApp())
       .post('/api/face/identify')
+      .set('X-Forwarded-For', freshIp())
       .send({ descriptor: [1, 2] });
     expect(res.status).toBe(400);
   });
@@ -436,6 +442,7 @@ describe('POST /api/face/identify — face identity scan (FACE-J)', () => {
 
     const res = await request(buildApp())
       .post('/api/face/identify')
+      .set('X-Forwarded-For', freshIp())
       .send({ descriptor: VALID_DESC });
 
     expect(res.status).toBe(200);
@@ -673,6 +680,107 @@ describe('POST /api/face/consent — update proctoring consent (A1)', () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.consentProctoring).toBe(true);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// A3 — Public identify endpoint hardening + admin audit logging
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('POST /api/face/identify — A3 hardening', () => {
+  it('returns 400 for short descriptor', async () => {
+    const res = await request(buildApp())
+      .post('/api/face/identify')
+      .set('X-Forwarded-For', freshIp())
+      .send({ descriptor: [1, 2, 3] });
+    expect(res.status).toBe(400);
+  });
+
+  it('returns found: false when no enrolled users (no match)', async () => {
+    vi.spyOn(User, 'find').mockReturnValue(chainOf([]));
+    const res = await request(buildApp())
+      .post('/api/face/identify')
+      .set('X-Forwarded-For', freshIp())
+      .send({ descriptor: VALID_DESC });
+    expect(res.status).toBe(200);
+    expect(res.body.found).toBe(false);
+  });
+
+  it('tenant-scoped: passes tenantId to DB query when provided', async () => {
+    const findSpy = vi.spyOn(User, 'find').mockReturnValue(chainOf([]));
+    await request(buildApp())
+      .post('/api/face/identify')
+      .set('X-Forwarded-For', freshIp())
+      .send({ descriptor: VALID_DESC, tenantId: TENANT_ID });
+    expect(findSpy).toHaveBeenCalled();
+    const [filter] = findSpy.mock.calls[0];
+    expect(filter.tenantId).toBe(TENANT_ID);
+  });
+
+  it('cross-tenant search: no tenantId in query when not provided', async () => {
+    const findSpy = vi.spyOn(User, 'find').mockReturnValue(chainOf([]));
+    await request(buildApp())
+      .post('/api/face/identify')
+      .set('X-Forwarded-For', freshIp())
+      .send({ descriptor: VALID_DESC });
+    expect(findSpy).toHaveBeenCalled();
+    const [filter] = findSpy.mock.calls[0];
+    expect(filter.tenantId).toBeUndefined();
+  });
+
+  it('audit-logs every identify attempt (hit or miss)', async () => {
+    vi.spyOn(User, 'find').mockReturnValue(chainOf([]));
+    await request(buildApp())
+      .post('/api/face/identify')
+      .set('X-Forwarded-For', freshIp())
+      .send({ descriptor: VALID_DESC });
+    expect(logger.audit).toHaveBeenCalledWith(
+      'face.identify', 'anonymous', null,
+      expect.objectContaining({ found: false })
+    );
+  });
+});
+
+describe('GET /api/face/admin/duplicates — A3 admin audit logging', () => {
+  it('audit-logs when admin accesses non-empty duplicate list', async () => {
+    vi.spyOn(FaceDuplicateAlert, 'find').mockReturnValue(chainOf([makeAlert()]));
+
+    await request(buildApp())
+      .get('/api/face/admin/duplicates')
+      .set('Authorization', `Bearer ${makeToken()}`);
+
+    expect(logger.audit).toHaveBeenCalledWith(
+      'Admin accessed face duplicate alerts', ADMIN_ID, TENANT_ID,
+      expect.objectContaining({ count: 1 })
+    );
+  });
+
+  it('does NOT audit-log when duplicate list is empty', async () => {
+    vi.spyOn(FaceDuplicateAlert, 'find').mockReturnValue(chainOf([]));
+
+    await request(buildApp())
+      .get('/api/face/admin/duplicates')
+      .set('Authorization', `Bearer ${makeToken()}`);
+
+    const auditCalls = logger.audit.mock.calls.filter(c => c[0] === 'Admin accessed face duplicate alerts');
+    expect(auditCalls.length).toBe(0);
+  });
+});
+
+describe('PATCH /api/face/admin/duplicates/:id — A3 review audit logging', () => {
+  it('audit-logs the review action with email info before taking action', async () => {
+    const alert = makeAlert({ email1: 'a@test.com', email2: 'b@test.com' });
+    vi.spyOn(FaceDuplicateAlert, 'findOne').mockResolvedValue(alert);
+
+    await request(buildApp())
+      .patch(`/api/face/admin/duplicates/${ALERT_ID}`)
+      .set('Authorization', `Bearer ${makeToken()}`)
+      .send({ action: 'cleared' });
+
+    expect(logger.audit).toHaveBeenCalledWith(
+      'Admin reviewed face duplicate alert', ADMIN_ID, TENANT_ID,
+      expect.objectContaining({ action: 'cleared', alertId: ALERT_ID })
+    );
   });
 });
 
