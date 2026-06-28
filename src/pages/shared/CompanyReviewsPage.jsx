@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../../api/api.js';
 import { card, btnP, btnG } from '../../constants/styles.js';
+import useSEO from '../../hooks/useSEO.js';
 
 const STARS = [1, 2, 3, 4, 5];
 
@@ -254,6 +255,45 @@ export default function CompanyReviewsPage({ user }) {
   const displayedAvg = filteredReviews.length > 0
     ? (filteredReviews.reduce((s, r) => s + (r.rating || 0), 0) / filteredReviews.length).toFixed(1)
     : null;
+
+  // ── JSON-LD AggregateRating for the currently-filtered company ───────────
+  const seoCompany = selectedCo || searchCompany.trim();
+  const ldSchema = useMemo(() => {
+    if (!seoCompany || filteredReviews.length === 0) return null;
+    const avg = filteredReviews.reduce((s, r) => s + (r.rating || 0), 0) / filteredReviews.length;
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      name: seoCompany,
+      aggregateRating: {
+        '@type': 'AggregateRating',
+        ratingValue: avg.toFixed(1),
+        bestRating: '5',
+        worstRating: '1',
+        ratingCount: filteredReviews.length,
+        reviewCount: filteredReviews.length,
+      },
+      review: filteredReviews.slice(0, 5).map(r => ({
+        '@type': 'Review',
+        author: { '@type': 'Person', name: r.isAnonymous ? 'Anonymous' : (r.reviewerName || 'Verified User') },
+        reviewRating: { '@type': 'Rating', ratingValue: r.rating, bestRating: 5, worstRating: 1 },
+        name: r.title || undefined,
+        positiveNotes: r.pros || undefined,
+        negativeNotes: r.cons || undefined,
+        datePublished: r.createdAt ? r.createdAt.slice(0, 10) : undefined,
+      })),
+    };
+  }, [seoCompany, filteredReviews]);
+
+  useSEO({
+    title: seoCompany ? `${seoCompany} Reviews — TalentNest HR` : 'Company Reviews — TalentNest HR',
+    description: seoCompany && displayedAvg
+      ? `${seoCompany} is rated ${displayedAvg}/5 by ${filteredReviews.length} employees on TalentNest HR. Read honest reviews and salary information.`
+      : 'Read honest company reviews submitted by candidates and employees across thousands of companies on TalentNest HR.',
+    path: '/companies/reviews',
+    keywords: seoCompany ? `${seoCompany} reviews, ${seoCompany} rating, employee feedback` : 'company reviews, employer ratings, glassdoor alternative',
+    schema: ldSchema,
+  });
 
   const ratingDist = STARS.slice().reverse().map(s => ({
     star: s,

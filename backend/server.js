@@ -115,20 +115,27 @@ app.use(cors({
 app.use(morgan(IS_PROD ? 'combined' : 'dev'));
 
 // ── Rate limiting
-// Global: 5000 requests per 15 min per IP (Supports high-traffic office proxies and 100+ active users)
+// Global: 20 000 requests per 15 min per IP (anti-DDoS floor; supports office NAT and 100+ concurrent users)
 app.use('/api/', rateLimit({
   windowMs: 15 * 60 * 1000, max: 20000,
+  standardHeaders: true, legacyHeaders: false,
   message: { success: false, error: 'Too many requests. Try again later.' }
 }));
 // Auth endpoints — Scaled for growth
-app.use('/api/auth/login', rateLimit({ windowMs: 15 * 60 * 1000, max: 500, message: { success: false, error: 'Too many login attempts.' } }));
-app.use('/api/auth/register', rateLimit({ windowMs: 15 * 60 * 1000, max: 500, message: { success: false, error: 'Too many registration attempts.' } }));
+app.use('/api/auth/login', rateLimit({ windowMs: 15 * 60 * 1000, max: 500, standardHeaders: true, legacyHeaders: false, message: { success: false, error: 'Too many login attempts.' } }));
+app.use('/api/auth/register', rateLimit({ windowMs: 15 * 60 * 1000, max: 500, standardHeaders: true, legacyHeaders: false, message: { success: false, error: 'Too many registration attempts.' } }));
 // Email / invite sending — prevent email spam and Resend bill abuse
 // 200 invite/email sends per hour per IP (Allows bulk onboarding)
-app.use('/api/admin/invite-admin',   rateLimit({ windowMs: 60 * 60 * 1000, max: 200, message: { success: false, error: 'Too many invite requests. Please wait before sending more.' } }));
-app.use('/api/admin/invite-recruiter', rateLimit({ windowMs: 60 * 60 * 1000, max: 200, message: { success: false, error: 'Too many invite requests. Please wait before sending more.' } }));
-app.use('/api/admin/resend-invite',  rateLimit({ windowMs: 60 * 60 * 1000, max: 200, message: { success: false, error: 'Too many invite requests. Please wait before sending more.' } }));
-app.use('/api/email', rateLimit({ windowMs: 60 * 60 * 1000, max: 200, message: { success: false, error: 'Email rate limit reached. Please try again later.' } }));
+app.use('/api/admin/invite-admin',   rateLimit({ windowMs: 60 * 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false, message: { success: false, error: 'Too many invite requests. Please wait before sending more.' } }));
+app.use('/api/admin/invite-recruiter', rateLimit({ windowMs: 60 * 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false, message: { success: false, error: 'Too many invite requests. Please wait before sending more.' } }));
+app.use('/api/admin/resend-invite',  rateLimit({ windowMs: 60 * 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false, message: { success: false, error: 'Too many invite requests. Please wait before sending more.' } }));
+app.use('/api/email', rateLimit({ windowMs: 60 * 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false, message: { success: false, error: 'Email rate limit reached. Please try again later.' } }));
+// Company reviews — public write endpoint; 20/hour prevents spam without impeding legitimate users
+app.use('/api/company-reviews', rateLimit({ windowMs: 60 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false, skip: (req) => req.method === 'GET', message: { success: false, error: 'Too many review submissions. Please try again later.' } }));
+// NPS survey writes — 10/hour per IP
+app.use('/api/nps', rateLimit({ windowMs: 60 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false, skip: (req) => req.method === 'GET', message: { success: false, error: 'Too many survey submissions. Please try again later.' } }));
+// Public job applications — 30/hour; allows normal job hunting without blocking
+app.use('/api/applications/public', rateLimit({ windowMs: 60 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false, message: { success: false, error: 'Too many applications submitted from this IP. Please try again later.' } }));
 
 // ── Body parsing
 app.use('/api/users/bulk-import', express.json({ limit: '25mb' }));
