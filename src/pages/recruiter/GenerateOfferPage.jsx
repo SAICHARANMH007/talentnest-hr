@@ -3,6 +3,10 @@ import { api } from '../../api/api.js';
 import Toast from '../../components/ui/Toast.jsx';
 import PageHeader from '../../components/ui/PageHeader.jsx';
 import OfferLetterModal from '../../components/modals/OfferLetterModal.jsx';
+import { btnP, btnG, card, inp } from '../../constants/styles.js';
+import Field from '../../components/ui/Field.jsx';
+import Dropdown from '../../components/ui/Dropdown.jsx';
+import Spinner from '../../components/ui/Spinner.jsx';
 
 // Local CTC breakdown helper (OfferLetterModal does not export these)
 function calcCTC(annual, variablePct = 20, isMetro = true) {
@@ -55,10 +59,6 @@ function OfferLetterDoc({ data: { candidate, job, form }, ctc }) {
     </div>
   );
 }
-import { btnP, btnG, card, inp } from '../../constants/styles.js';
-import Field from '../../components/ui/Field.jsx';
-import Dropdown from '../../components/ui/Dropdown.jsx';
-import Spinner from '../../components/ui/Spinner.jsx';
 
 /**
  * Dedicated, full-screen Offer Letter Generator.

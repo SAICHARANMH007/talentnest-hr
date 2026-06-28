@@ -1,5 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useOrgOptions } from '../../hooks/useOrgOptions.js';
+import Toast from '../../components/ui/Toast.jsx';
+import PageHeader from '../../components/ui/PageHeader.jsx';
+import CapLimitBanner from '../../components/ui/CapLimitBanner.jsx';
+import Badge from '../../components/ui/Badge.jsx';
+import Spinner from '../../components/ui/Spinner.jsx';
+import Modal from '../../components/ui/Modal.jsx';
+import JobDetailDrawer from '../../components/shared/JobDetailDrawer.jsx';
+import ShareJobModal from '../../components/shared/ShareJobModal.jsx';
+import PostJobForm from '../../components/shared/PostJobForm.jsx';
+import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
+import { btnP, btnG, btnD, card } from '../../constants/styles.js';
+import { api } from '../../api/api.js';
+import { SM } from '../../constants/stages.js';
+import { genericSearchMatch } from '../../api/matching.js';
+import CareerListingModal from '../../components/modals/CareerListingModal.jsx';
 
 function useIsMobile() {
   const [m, setM] = useState(() => typeof window !== 'undefined' && window.innerWidth < 900);
@@ -53,23 +69,6 @@ function JobActionsMenu({ actions, isMobile }) {
     </div>
   );
 }
-import { useNavigate } from 'react-router-dom';
-import Toast from '../../components/ui/Toast.jsx';
-import PageHeader from '../../components/ui/PageHeader.jsx';
-import CapLimitBanner from '../../components/ui/CapLimitBanner.jsx';
-import Badge from '../../components/ui/Badge.jsx';
-import Spinner from '../../components/ui/Spinner.jsx';
-import Modal from '../../components/ui/Modal.jsx';
-import JobDetailDrawer from '../../components/shared/JobDetailDrawer.jsx';
-import ShareJobModal from '../../components/shared/ShareJobModal.jsx';
-import PostJobForm from '../../components/shared/PostJobForm.jsx';
-import UserDetailDrawer from '../../components/shared/UserDetailDrawer.jsx';
-import { btnP, btnG, btnD, card } from '../../constants/styles.js';
-import { api } from '../../api/api.js';
-import { SM } from '../../constants/stages.js';
-import { genericSearchMatch } from '../../api/matching.js';
-import CareerListingModal from '../../components/modals/CareerListingModal.jsx';
-
 const fInp = { padding:'8px 12px', borderRadius:8, border:'1px solid rgba(1,118,211,0.2)', background:'#F3F2F2', color:'#181818', fontSize:13, outline:'none', fontFamily:'inherit', boxSizing:'border-box' };
 const fSel = { ...fInp, cursor:'pointer' };
 

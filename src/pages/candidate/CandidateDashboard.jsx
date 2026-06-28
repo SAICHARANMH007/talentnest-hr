@@ -1,4 +1,16 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Toast from '../../components/ui/Toast.jsx';
+import Badge from '../../components/ui/Badge.jsx';
+import Spinner from '../../components/ui/Spinner.jsx';
+import PageHeader from '../../components/ui/PageHeader.jsx';
+import KpiCard from '../../components/charts/KpiCard.jsx';
+import HorizBar from '../../components/charts/HorizBar.jsx';
+import InterviewCountdown from '../../components/misc/InterviewCountdown.jsx';
+import ReferralHub from '../../components/candidate/ReferralHub.jsx';
+import { STAGES } from '../../constants/stages.js';
+import { btnP, btnG, card } from '../../constants/styles.js';
+import { api } from '../../api/api.js';
 
 function useIsMobile() {
   const [m, setM] = React.useState(() => window.innerWidth < 640);
@@ -9,19 +21,6 @@ function useIsMobile() {
   }, []);
   return m;
 }
-import { useNavigate } from 'react-router-dom';
-import Toast from '../../components/ui/Toast.jsx';
-import Badge from '../../components/ui/Badge.jsx';
-import Spinner from '../../components/ui/Spinner.jsx';
-import PageHeader from '../../components/ui/PageHeader.jsx';
-import KpiCard from '../../components/charts/KpiCard.jsx';
-
-import HorizBar from '../../components/charts/HorizBar.jsx';
-import InterviewCountdown from '../../components/misc/InterviewCountdown.jsx';
-import ReferralHub from '../../components/candidate/ReferralHub.jsx';
-import { STAGES } from '../../constants/stages.js';
-import { btnP, btnG, card } from '../../constants/styles.js';
-import { api } from '../../api/api.js';
 
 export default function CandidateDashboard({ user }) {
   const navigate = useNavigate();

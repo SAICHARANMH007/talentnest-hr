@@ -1,5 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../../api/api.js';
+import PageHeader from '../../components/ui/PageHeader.jsx';
+import Toast from '../../components/ui/Toast.jsx';
+import Spinner from '../../components/ui/Spinner.jsx';
+import { card, btnP, btnG, btnD, inp } from '../../constants/styles.js';
 
 function dataUriToBlobUrl(dataUri, mimeType) {
   if (!dataUri) return null;
@@ -12,11 +16,6 @@ function dataUriToBlobUrl(dataUri, mimeType) {
     return URL.createObjectURL(new Blob([bytes], { type: mimeType || 'application/octet-stream' }));
   } catch { return dataUri; }
 }
-import PageHeader from '../../components/ui/PageHeader.jsx';
-import Toast from '../../components/ui/Toast.jsx';
-import Spinner from '../../components/ui/Spinner.jsx';
-import { card, btnP, btnG, btnD, inp } from '../../constants/styles.js';
-
 const DEFAULT_DOC_TYPES = [
   { value: 'aadhaar',          label: 'Aadhaar Card' },
   { value: 'pan',              label: 'PAN Card' },
