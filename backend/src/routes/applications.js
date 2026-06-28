@@ -1147,9 +1147,17 @@ router.get('/export', ...guard, allowRoles('admin', 'super_admin', 'recruiter'),
 
 // GET /api/applications/scorecards?jobId=xxx — list all scorecard summaries for a job
 // MUST be before /:id to avoid Express matching 'scorecards' as the :id param.
-router.get('/scorecards', ...guard, allowRoles('admin', 'super_admin', 'recruiter'), asyncHandler(async (req, res) => {
+router.get('/scorecards', ...guard, allowRoles('admin', 'super_admin', 'recruiter', 'hiring_manager'), asyncHandler(async (req, res) => {
   const { jobId } = req.query;
   if (!jobId) return res.status(400).json({ message: 'jobId required' });
+
+  // Hiring managers may only view scorecards for jobs they are assigned to
+  if (req.user.role === 'hiring_manager') {
+    const hmJob = await Job.findOne({
+      _id: jobId, tenantId: req.user.tenantId, hiringManagers: req.user.id,
+    }).select('_id').lean();
+    if (!hmJob) throw new AppError('You can only view scorecards for jobs assigned to you.', 403);
+  }
 
   const scoreFilter = { jobId, deletedAt: null };
   if (req.user.role !== 'super_admin') scoreFilter.tenantId = req.user.tenantId;
@@ -1595,6 +1603,12 @@ async function assertRecruiterJobAccess(req, existing) {
     }).select('_id').lean();
     if (!assignedJob) throw new AppError('You can only update applicants for jobs assigned to you.', 403);
   }
+  if (req.user.role === 'hiring_manager') {
+    const hmJob = await Job.findOne({
+      _id: existing.jobId, tenantId: req.user.tenantId, hiringManagers: req.user.id,
+    }).select('_id').lean();
+    if (!hmJob) throw new AppError('You can only update applicants for jobs assigned to you.', 403);
+  }
 }
 
 // PATCH /api/applications/:id/notes
@@ -1967,7 +1981,7 @@ router.patch('/:id/interview/:roundIndex/reschedule', ...guard,
 
 // POST /api/applications/:id/interview/:roundIndex/kit-scores — save structured kit scores
 router.post('/:id/interview/:roundIndex/kit-scores', ...guard,
-  allowRoles('admin', 'super_admin', 'recruiter'),
+  allowRoles('admin', 'super_admin', 'recruiter', 'hiring_manager'),
   asyncHandler(async (req, res) => {
     const { kitScores } = req.body;
     if (!Array.isArray(kitScores)) throw new AppError('kitScores array is required', 400);

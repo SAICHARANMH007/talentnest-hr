@@ -57,19 +57,25 @@ import appsRouter from '../src/routes/applications.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const JWT_SECRET    = 'test_jwt_secret_for_vitest_only';
-const COOKIE_SECRET = 'test_cookie_secret';
-const TENANT_ID     = new mongoose.Types.ObjectId().toString();
-const OTHER_TENANT  = new mongoose.Types.ObjectId().toString();
-const ADMIN_ID      = new mongoose.Types.ObjectId().toString();
-const RECRUITER_ID  = new mongoose.Types.ObjectId().toString();
-const JOB_ID        = new mongoose.Types.ObjectId().toString();
-const APP_ID        = new mongoose.Types.ObjectId().toString();
-const CAND_ID       = new mongoose.Types.ObjectId().toString();
+const COOKIE_SECRET    = 'test_cookie_secret';
+const TENANT_ID        = new mongoose.Types.ObjectId().toString();
+const OTHER_TENANT     = new mongoose.Types.ObjectId().toString();
+const ADMIN_ID         = new mongoose.Types.ObjectId().toString();
+const RECRUITER_ID     = new mongoose.Types.ObjectId().toString();
+const HIRING_MGR_ID    = new mongoose.Types.ObjectId().toString();
+const CANDIDATE_ID     = new mongoose.Types.ObjectId().toString();
+const JOB_ID           = new mongoose.Types.ObjectId().toString();
+const APP_ID           = new mongoose.Types.ObjectId().toString();
+const CAND_ID          = new mongoose.Types.ObjectId().toString();
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function makeToken(role = 'admin', opts = {}) {
+  let defaultId = ADMIN_ID;
+  if (role === 'recruiter')     defaultId = RECRUITER_ID;
+  if (role === 'hiring_manager') defaultId = HIRING_MGR_ID;
+  if (role === 'candidate')     defaultId = CANDIDATE_ID;
   return jwt.sign(
-    { userId: opts.id || ADMIN_ID, role, tenantId: opts.tenantId ?? TENANT_ID },
+    { userId: opts.id || defaultId, role, tenantId: opts.tenantId ?? TENANT_ID },
     JWT_SECRET,
     { expiresIn: '1h' },
   );
@@ -190,6 +196,16 @@ beforeEach(() => {
       return queryOf({ _id: RECRUITER_ID, id: RECRUITER_ID, role: 'recruiter',
         tenantId: TENANT_ID, isActive: true, name: 'Test Recruiter',
         email: 'rec@test.example', toObject: () => ({}) });
+    }
+    if (s === HIRING_MGR_ID) {
+      return queryOf({ _id: HIRING_MGR_ID, id: HIRING_MGR_ID, role: 'hiring_manager',
+        tenantId: TENANT_ID, isActive: true, name: 'Test HM',
+        email: 'hm@test.example', toObject: () => ({}) });
+    }
+    if (s === CANDIDATE_ID) {
+      return queryOf({ _id: CANDIDATE_ID, id: CANDIDATE_ID, role: 'candidate',
+        tenantId: TENANT_ID, isActive: true, name: 'Test Candidate',
+        email: 'cand@test.example', toObject: () => ({}) });
     }
     return queryOf({ _id: ADMIN_ID, id: ADMIN_ID, role: 'admin',
       tenantId: TENANT_ID, isActive: true, name: 'Test Admin',
@@ -538,5 +554,85 @@ describe('GET /api/applications/status/:token — public tracker', () => {
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('currentStage');
     expect(res.body).toHaveProperty('stageHistory');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// B1 — Hiring Manager role depth
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('GET /api/applications/scorecards — hiring_manager access (B1)', () => {
+  it('returns 403 when candidate role requests scorecards', async () => {
+    const res = await request(buildTestApp())
+      .get(`/api/applications/scorecards?jobId=${JOB_ID}`)
+      .set('Authorization', `Bearer ${makeToken('candidate')}`);
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 403 when hiring_manager is NOT assigned to the requested job', async () => {
+    vi.spyOn(Job, 'findOne').mockReturnValue(queryOf(null)); // not in hiringManagers
+    const res = await request(buildTestApp())
+      .get(`/api/applications/scorecards?jobId=${JOB_ID}`)
+      .set('Authorization', `Bearer ${makeToken('hiring_manager')}`);
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/assigned to you/i);
+  });
+
+  it('returns 200 when hiring_manager IS assigned to the job', async () => {
+    vi.spyOn(Job, 'findOne').mockReturnValue(queryOf(makeJob({ hiringManagers: [HIRING_MGR_ID] })));
+    vi.spyOn(Application, 'find').mockReturnValue({
+      populate: vi.fn().mockReturnThis(),
+      select  : vi.fn().mockReturnThis(),
+      lean    : vi.fn().mockResolvedValue([]),
+    });
+    const res = await request(buildTestApp())
+      .get(`/api/applications/scorecards?jobId=${JOB_ID}`)
+      .set('Authorization', `Bearer ${makeToken('hiring_manager')}`);
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+  });
+
+  it('returns 400 when jobId is missing', async () => {
+    const res = await request(buildTestApp())
+      .get('/api/applications/scorecards')
+      .set('Authorization', `Bearer ${makeToken('hiring_manager')}`);
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('POST /api/applications/:id/interview/:roundIndex/kit-scores — hiring_manager (B1)', () => {
+  it('returns 403 when candidate role tries to save kit scores', async () => {
+    const res = await request(buildTestApp())
+      .post(`/api/applications/${APP_ID}/interview/0/kit-scores`)
+      .set('Authorization', `Bearer ${makeToken('candidate')}`)
+      .send({ kitScores: [] });
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 403 when hiring_manager is NOT assigned to the application\'s job', async () => {
+    const fakeApp = makeApp({ interviewRounds: [{ scheduledAt: new Date() }] });
+    vi.spyOn(Application, 'findOne').mockResolvedValue(fakeApp);
+    vi.spyOn(Job, 'findOne').mockReturnValue(queryOf(null));
+
+    const res = await request(buildTestApp())
+      .post(`/api/applications/${APP_ID}/interview/0/kit-scores`)
+      .set('Authorization', `Bearer ${makeToken('hiring_manager')}`)
+      .send({ kitScores: [{ question: 'q1', score: 5 }] });
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/assigned to you/i);
+  });
+
+  it('saves kit scores when hiring_manager IS assigned to the job', async () => {
+    const fakeApp = makeApp({ interviewRounds: [{ scheduledAt: new Date(), kitScores: [] }] });
+    vi.spyOn(Application, 'findOne').mockResolvedValue(fakeApp);
+    vi.spyOn(Job, 'findOne').mockReturnValue(queryOf(makeJob({ hiringManagers: [HIRING_MGR_ID] })));
+
+    const res = await request(buildTestApp())
+      .post(`/api/applications/${APP_ID}/interview/0/kit-scores`)
+      .set('Authorization', `Bearer ${makeToken('hiring_manager')}`)
+      .send({ kitScores: [{ question: 'Technical depth', score: 4 }] });
+    expect(res.status).toBe(200);
+    expect(fakeApp.markModified).toHaveBeenCalledWith('interviewRounds');
+    expect(fakeApp.save).toHaveBeenCalled();
   });
 });
