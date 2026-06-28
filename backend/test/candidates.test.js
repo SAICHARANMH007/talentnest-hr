@@ -11,6 +11,11 @@
  *   CAND-D  DELETE /:id  — recruiter → 403; admin soft-deletes; 404 when gone.
  *   CAND-E  PATCH /:id   — tenantId/_id stripped from updates; invalid
  *                          LinkedIn URL → 400; admin can update.
+ *   CAND-F  GET /:id/full-timeline — 404 when no candidate + no cross-tenant app;
+ *                          same-tenant returns event list; cross-tenant access
+ *                          granted when Application exists in requester tenant;
+ *                          application events always filtered by requester tenantId
+ *                          (security boundary); super_admin bypasses tenant filter.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -417,5 +422,109 @@ describe('PATCH /api/candidates/:id — update (CAND-E)', () => {
       .send({ location: 'Delhi' });
 
     expect(res.status).toBe(404);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe('GET /api/candidates/:id/full-timeline — CAND-F', () => {
+  function makeApp(appFields = {}) {
+    return {
+      _id: new mongoose.Types.ObjectId(),
+      tenantId: TENANT_ID,
+      candidateId: CAND_DOC_ID,
+      jobId: { title: 'Engineer', department: 'Eng', location: 'Remote' },
+      createdAt: new Date(),
+      stageHistory: [],
+      interviewRounds: [],
+      offers: [],
+      scorecards: [],
+      ...appFields,
+    };
+  }
+
+  it('returns 401 with no token', async () => {
+    const res = await request(buildApp()).get(`/api/candidates/${CAND_DOC_ID}/full-timeline`);
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 404 when candidate not in own tenant and no cross-tenant application exists', async () => {
+    vi.spyOn(Candidate, 'findOne').mockReturnValue(chainOf(null));
+    vi.spyOn(Application, 'exists').mockResolvedValue(false);
+
+    const res = await request(buildApp())
+      .get(`/api/candidates/${CAND_DOC_ID}/full-timeline`)
+      .set('Authorization', `Bearer ${makeToken('admin')}`);
+
+    expect(res.status).toBe(404);
+    expect(res.body.error).toMatch(/Candidate not found/i);
+  });
+
+  it('same-tenant: returns 200 with event list and correct shape', async () => {
+    const cand = makeCandidate();
+    vi.spyOn(Candidate, 'findOne').mockReturnValue(chainOf(cand));
+    vi.spyOn(Application, 'find').mockReturnValue(chainOf([makeApp()]));
+
+    const res = await request(buildApp())
+      .get(`/api/candidates/${cand._id}/full-timeline`)
+      .set('Authorization', `Bearer ${makeToken('admin')}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(Array.isArray(res.body.data.events)).toBe(true);
+    // profile_created event must always be present
+    expect(res.body.data.events.some(e => e.type === 'profile_created')).toBe(true);
+    // application event is included for the mocked app
+    expect(res.body.data.events.some(e => e.type === 'application')).toBe(true);
+  });
+
+  it('cross-tenant: 200 when an Application links candidate to the requester tenant', async () => {
+    const crossCand = makeCandidate({ tenantId: new mongoose.Types.ObjectId().toString() });
+
+    vi.spyOn(Candidate, 'findOne')
+      .mockReturnValueOnce(chainOf(null))     // same-tenant miss
+      .mockReturnValue(chainOf(crossCand));   // global fetch succeeds
+    vi.spyOn(Application, 'exists').mockResolvedValue(true);
+    vi.spyOn(Application, 'find').mockReturnValue(chainOf([]));
+
+    const res = await request(buildApp())
+      .get(`/api/candidates/${crossCand._id}/full-timeline`)
+      .set('Authorization', `Bearer ${makeToken('admin')}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+  });
+
+  it('cross-tenant: application-events query is scoped to the requester tenantId (security boundary)', async () => {
+    const crossCand = makeCandidate({ tenantId: new mongoose.Types.ObjectId().toString() });
+
+    vi.spyOn(Candidate, 'findOne')
+      .mockReturnValueOnce(chainOf(null))
+      .mockReturnValue(chainOf(crossCand));
+    vi.spyOn(Application, 'exists').mockResolvedValue(true);
+    const findSpy = vi.spyOn(Application, 'find').mockReturnValue(chainOf([]));
+
+    await request(buildApp())
+      .get(`/api/candidates/${crossCand._id}/full-timeline`)
+      .set('Authorization', `Bearer ${makeToken('admin')}`);
+
+    const appFilter = findSpy.mock.calls[0][0];
+    // Events must only come from the requester's own tenant — never from the candidate's tenant
+    expect(appFilter.tenantId?.toString() ?? appFilter.tenantId).toBe(TENANT_ID);
+    expect(appFilter.deletedAt).toBeNull();
+  });
+
+  it('super_admin: can view any candidate timeline — no tenantId filter applied', async () => {
+    const cand = makeCandidate({ tenantId: new mongoose.Types.ObjectId().toString() });
+    const findOneSpy = vi.spyOn(Candidate, 'findOne').mockReturnValue(chainOf(cand));
+    vi.spyOn(Application, 'find').mockReturnValue(chainOf([]));
+
+    const res = await request(buildApp())
+      .get(`/api/candidates/${cand._id}/full-timeline`)
+      .set('Authorization', `Bearer ${makeToken('super_admin', { id: 'sa_1', tenantId: null })}`);
+
+    expect(res.status).toBe(200);
+    // super_admin path: Candidate.findOne must NOT include tenantId in filter
+    const candFilter = findOneSpy.mock.calls[0][0];
+    expect(candFilter.tenantId).toBeUndefined();
   });
 });
