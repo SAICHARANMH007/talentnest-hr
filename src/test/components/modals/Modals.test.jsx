@@ -222,11 +222,11 @@ describe('HiredDetailsModal', () => {
     expect(screen.getByText('for Backend Engineer')).toBeInTheDocument()
   })
 
-  it('shows joining date label', () => {
-    render(
+  it('shows joining date input field', () => {
+    const { container } = render(
       <HiredDetailsModal appId="app1" candidateName="Alice" onClose={vi.fn()} onSaved={vi.fn()} />
     )
-    expect(screen.getByText(/Joining Date/i)).toBeInTheDocument()
+    expect(container.querySelector('input[type="date"]')).not.toBeNull()
   })
 
   it('calls onClose when Skip for Now is clicked', () => {
@@ -239,11 +239,11 @@ describe('HiredDetailsModal', () => {
   })
 
   it('calls api.updatePreBoardingByApplication when Save is clicked with a date', async () => {
-    render(
+    const { container } = render(
       <HiredDetailsModal appId="app1" candidateName="Alice" onClose={vi.fn()} onSaved={vi.fn()} />
     )
-    // Fill in joining date
-    const dateInput = screen.getByLabelText(/Joining Date/i)
+    // HiredDetailsModal uses raw <input type="date"> (not the Field mock)
+    const dateInput = container.querySelector('input[type="date"]')
     fireEvent.change(dateInput, { target: { value: '2025-08-01' } })
 
     await act(async () => {

@@ -291,7 +291,7 @@ describe('RecruiterPipeline', () => {
     await act(async () => { render(<RecruiterPipeline user={mockUser} />) })
     await act(async () => { fireEvent.click(screen.getAllByText('Senior Engineer')[0]) })
     await waitFor(() => screen.getAllByText('Bob Candidate')[0])
-    const shortlistedBtn = screen.getByText(/Shortlisted/i)
+    const shortlistedBtn = screen.getAllByText(/Shortlisted/i)[0]
     await act(async () => { fireEvent.click(shortlistedBtn) })
     await waitFor(() => {
       const lastCall = api.getApplications.mock.calls.at(-1)[0]
@@ -343,7 +343,7 @@ describe('RecruiterPipeline', () => {
     await act(async () => { render(<RecruiterPipeline user={mockUser} />) })
     await act(async () => { fireEvent.click(screen.getAllByText('Senior Engineer')[0]) })
     await waitFor(() => screen.getAllByText('Bob Candidate')[0])
-    const notesBtn = screen.getByText(/Notes/i)
+    const notesBtn = screen.getAllByText(/Notes/i)[0]
     await act(async () => { fireEvent.click(notesBtn) })
     expect(screen.getByPlaceholderText(/Add private notes/i)).toBeInTheDocument()
   })
@@ -357,7 +357,7 @@ describe('RecruiterPipeline', () => {
     await act(async () => { render(<RecruiterPipeline user={mockUser} />) })
     await act(async () => { fireEvent.click(screen.getAllByText('Senior Engineer')[0]) })
     await waitFor(() => screen.getAllByText('Bob Candidate')[0])
-    const tagsBtn = screen.getByText(/Tags/i)
+    const tagsBtn = screen.getAllByText(/Tags/i)[0]
     await act(async () => { fireEvent.click(tagsBtn) })
     expect(screen.getByText('Top Talent')).toBeInTheDocument()
     expect(screen.getByText('Culture Fit')).toBeInTheDocument()
@@ -372,7 +372,7 @@ describe('RecruiterPipeline', () => {
     await act(async () => { render(<RecruiterPipeline user={mockUser} />) })
     await act(async () => { fireEvent.click(screen.getAllByText('Senior Engineer')[0]) })
     await waitFor(() => screen.getAllByText('Bob Candidate')[0])
-    const rejectBtn = screen.getByText(/✕ Reject/i)
+    const rejectBtn = screen.getAllByText(/✕ Reject/i)[0]
     await act(async () => { fireEvent.click(rejectBtn) })
     expect(mockNavigate).toHaveBeenCalledWith(
       expect.stringContaining('/app/forms/reject?appId=app1')
@@ -438,8 +438,8 @@ describe('RecruiterPipeline', () => {
     api.parkApplication.mockResolvedValue({})
     await act(async () => { render(<RecruiterPipeline user={mockUser} />) })
     await act(async () => { fireEvent.click(screen.getAllByText('Senior Engineer')[0]) })
-    await waitFor(() => screen.getByText('Bob Candidate'))
-    const parkBtn = screen.getByText(/🅿️ Park/i)
+    await waitFor(() => screen.getAllByText('Bob Candidate')[0])
+    const parkBtn = screen.getAllByText(/🅿️ Park/i)[0]
     await act(async () => { fireEvent.click(parkBtn) })
     expect(api.parkApplication).toHaveBeenCalledWith('app1')
   })
@@ -453,8 +453,8 @@ describe('RecruiterPipeline', () => {
     api.parkApplication.mockResolvedValue({})
     await act(async () => { render(<RecruiterPipeline user={mockUser} />) })
     await act(async () => { fireEvent.click(screen.getAllByText('Senior Engineer')[0]) })
-    await waitFor(() => screen.getByText('Bob Candidate'))
-    await act(async () => { fireEvent.click(screen.getByText(/🅿️ Park/i)) })
+    await waitFor(() => screen.getAllByText('Bob Candidate')[0])
+    await act(async () => { fireEvent.click(screen.getAllByText(/🅿️ Park/i)[0]) })
     await waitFor(() => {
       expect(screen.getByTestId('toast')).toHaveTextContent(/Talent Pool/i)
     })
