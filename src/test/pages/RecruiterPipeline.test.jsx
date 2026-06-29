@@ -188,11 +188,11 @@ describe('RecruiterPipeline', () => {
     expect(screen.getByText(/No jobs assigned yet/i)).toBeInTheDocument()
   })
 
-  it.skip('renders job cards when jobs are returned', async () => {
+  it('renders job cards when jobs are returned', async () => {
     api.getJobs.mockResolvedValue({ data: [makeJob(), makeJob({ id: 'j2', _id: 'j2', title: 'Product Manager' })] })
     await act(async () => { render(<RecruiterPipeline user={mockUser} />) })
     expect(screen.getAllByText('Senior Engineer')[0]).toBeInTheDocument()
-    expect(screen.getByText('Product Manager')).toBeInTheDocument()
+    expect(screen.getAllByText('Product Manager')[0]).toBeInTheDocument()
   })
 
   it('shows pipeline snapshot stats when jobs exist', async () => {
@@ -201,7 +201,7 @@ describe('RecruiterPipeline', () => {
     expect(screen.getByText(/YOUR PIPELINE SNAPSHOT/i)).toBeInTheDocument()
   })
 
-  it.skip('filters job cards by search input', async () => {
+  it('filters job cards by search input', async () => {
     api.getJobs.mockResolvedValue({
       data: [
         makeJob({ id: 'j1', title: 'Senior Engineer' }),
@@ -212,7 +212,7 @@ describe('RecruiterPipeline', () => {
     const searchInput = screen.getByPlaceholderText(/Search/i)
     await act(async () => { fireEvent.change(searchInput, { target: { value: 'Product' } }) })
     expect(screen.queryByText('Senior Engineer')).not.toBeInTheDocument()
-    expect(screen.getByText('Product Manager')).toBeInTheDocument()
+    expect(screen.getAllByText('Product Manager')[0]).toBeInTheDocument()
   })
 
   // ── Job selection and application loading ─────────────────────────────────
@@ -241,7 +241,7 @@ describe('RecruiterPipeline', () => {
     })
   })
 
-  it.skip('shows candidate card after selecting a job with applicants', async () => {
+  it('shows candidate card after selecting a job with applicants', async () => {
     api.getJobs.mockResolvedValue({ data: [makeJob()] })
     api.getApplications.mockResolvedValue({
       data: [makeApp()],
@@ -250,7 +250,7 @@ describe('RecruiterPipeline', () => {
     await act(async () => { render(<RecruiterPipeline user={mockUser} />) })
     await act(async () => { fireEvent.click(screen.getAllByText('Senior Engineer')[0]) })
     await waitFor(() => {
-      expect(screen.getByText('Bob Candidate')).toBeInTheDocument()
+      expect(screen.getAllByText('Bob Candidate')[0]).toBeInTheDocument()
     })
   })
 
@@ -282,7 +282,7 @@ describe('RecruiterPipeline', () => {
     })
   })
 
-  it.skip('passes stageFilter to getApplications when stage filter changes', async () => {
+  it('passes stageFilter to getApplications when stage filter changes', async () => {
     api.getJobs.mockResolvedValue({ data: [makeJob()] })
     api.getApplications.mockResolvedValue({
       data: [makeApp({ stage: 'shortlisted' })],
@@ -290,7 +290,7 @@ describe('RecruiterPipeline', () => {
     })
     await act(async () => { render(<RecruiterPipeline user={mockUser} />) })
     await act(async () => { fireEvent.click(screen.getAllByText('Senior Engineer')[0]) })
-    await waitFor(() => screen.getByText('Bob Candidate'))
+    await waitFor(() => screen.getAllByText('Bob Candidate')[0])
     const shortlistedBtn = screen.getByText(/Shortlisted/i)
     await act(async () => { fireEvent.click(shortlistedBtn) })
     await waitFor(() => {
@@ -301,7 +301,7 @@ describe('RecruiterPipeline', () => {
 
   // ── Candidate card interactions ───────────────────────────────────────────
 
-  it.skip('shows candidate name, email, and UTO match score on the card', async () => {
+  it('shows candidate name, email, and UTO match score on the card', async () => {
     api.getJobs.mockResolvedValue({ data: [makeJob()] })
     api.getApplications.mockResolvedValue({
       data: [makeApp({ talentMatchScore: 85 })],
@@ -310,9 +310,9 @@ describe('RecruiterPipeline', () => {
     await act(async () => { render(<RecruiterPipeline user={mockUser} />) })
     await act(async () => { fireEvent.click(screen.getAllByText('Senior Engineer')[0]) })
     await waitFor(() => {
-      expect(screen.getByText('Bob Candidate')).toBeInTheDocument()
-      expect(screen.getByText('bob@example.com · No phone')).toBeInTheDocument()
-      expect(screen.getByText('85%')).toBeInTheDocument()
+      expect(screen.getAllByText('Bob Candidate')[0]).toBeInTheDocument()
+      expect(screen.getAllByText('bob@example.com · No phone')[0]).toBeInTheDocument()
+      expect(screen.getAllByText('85%')[0]).toBeInTheDocument()
     })
   })
 
@@ -334,7 +334,7 @@ describe('RecruiterPipeline', () => {
     })
   })
 
-  it.skip('opens Notes panel when Notes button is clicked', async () => {
+  it('opens Notes panel when Notes button is clicked', async () => {
     api.getJobs.mockResolvedValue({ data: [makeJob()] })
     api.getApplications.mockResolvedValue({
       data: [makeApp()],
@@ -342,13 +342,13 @@ describe('RecruiterPipeline', () => {
     })
     await act(async () => { render(<RecruiterPipeline user={mockUser} />) })
     await act(async () => { fireEvent.click(screen.getAllByText('Senior Engineer')[0]) })
-    await waitFor(() => screen.getByText('Bob Candidate'))
+    await waitFor(() => screen.getAllByText('Bob Candidate')[0])
     const notesBtn = screen.getByText(/Notes/i)
     await act(async () => { fireEvent.click(notesBtn) })
     expect(screen.getByPlaceholderText(/Add private notes/i)).toBeInTheDocument()
   })
 
-  it.skip('opens Tags panel when Tags button is clicked', async () => {
+  it('opens Tags panel when Tags button is clicked', async () => {
     api.getJobs.mockResolvedValue({ data: [makeJob()] })
     api.getApplications.mockResolvedValue({
       data: [makeApp()],
@@ -356,14 +356,14 @@ describe('RecruiterPipeline', () => {
     })
     await act(async () => { render(<RecruiterPipeline user={mockUser} />) })
     await act(async () => { fireEvent.click(screen.getAllByText('Senior Engineer')[0]) })
-    await waitFor(() => screen.getByText('Bob Candidate'))
+    await waitFor(() => screen.getAllByText('Bob Candidate')[0])
     const tagsBtn = screen.getByText(/Tags/i)
     await act(async () => { fireEvent.click(tagsBtn) })
     expect(screen.getByText('Top Talent')).toBeInTheDocument()
     expect(screen.getByText('Culture Fit')).toBeInTheDocument()
   })
 
-  it.skip('navigates to reject form when Reject button is clicked', async () => {
+  it('navigates to reject form when Reject button is clicked', async () => {
     api.getJobs.mockResolvedValue({ data: [makeJob()] })
     api.getApplications.mockResolvedValue({
       data: [makeApp()],
@@ -371,7 +371,7 @@ describe('RecruiterPipeline', () => {
     })
     await act(async () => { render(<RecruiterPipeline user={mockUser} />) })
     await act(async () => { fireEvent.click(screen.getAllByText('Senior Engineer')[0]) })
-    await waitFor(() => screen.getByText('Bob Candidate'))
+    await waitFor(() => screen.getAllByText('Bob Candidate')[0])
     const rejectBtn = screen.getByText(/✕ Reject/i)
     await act(async () => { fireEvent.click(rejectBtn) })
     expect(mockNavigate).toHaveBeenCalledWith(
@@ -381,7 +381,7 @@ describe('RecruiterPipeline', () => {
 
   // ── Bulk actions ──────────────────────────────────────────────────────────
 
-  it.skip('shows bulk action bar when a candidate is selected via checkbox', async () => {
+  it('shows bulk action bar when a candidate is selected via checkbox', async () => {
     api.getJobs.mockResolvedValue({ data: [makeJob()] })
     api.getApplications.mockResolvedValue({
       data: [makeApp()],
@@ -389,13 +389,13 @@ describe('RecruiterPipeline', () => {
     })
     await act(async () => { render(<RecruiterPipeline user={mockUser} />) })
     await act(async () => { fireEvent.click(screen.getAllByText('Senior Engineer')[0]) })
-    await waitFor(() => screen.getByText('Bob Candidate'))
+    await waitFor(() => screen.getAllByText('Bob Candidate')[0])
     const checkbox = screen.getByRole('checkbox')
     await act(async () => { fireEvent.click(checkbox) })
     expect(screen.getByText(/1 selected/i)).toBeInTheDocument()
   })
 
-  it.skip('calls updateStage for each selected candidate during bulk shortlist', async () => {
+  it('calls updateStage for each selected candidate during bulk shortlist', async () => {
     api.getJobs.mockResolvedValue({ data: [makeJob()] })
     api.getApplications.mockResolvedValue({
       data: [makeApp()],
@@ -404,7 +404,7 @@ describe('RecruiterPipeline', () => {
     api.updateStage.mockResolvedValue({})
     await act(async () => { render(<RecruiterPipeline user={mockUser} />) })
     await act(async () => { fireEvent.click(screen.getAllByText('Senior Engineer')[0]) })
-    await waitFor(() => screen.getByText('Bob Candidate'))
+    await waitFor(() => screen.getAllByText('Bob Candidate')[0])
     const checkbox = screen.getByRole('checkbox')
     await act(async () => { fireEvent.click(checkbox) })
     const shortlistBtn = screen.getByText(/✓ Shortlist/i)
@@ -412,7 +412,7 @@ describe('RecruiterPipeline', () => {
     expect(api.updateStage).toHaveBeenCalledWith('app1', 'shortlisted')
   })
 
-  it.skip('clears selection after clicking Clear button in bulk bar', async () => {
+  it('clears selection after clicking Clear button in bulk bar', async () => {
     api.getJobs.mockResolvedValue({ data: [makeJob()] })
     api.getApplications.mockResolvedValue({
       data: [makeApp()],
@@ -420,7 +420,7 @@ describe('RecruiterPipeline', () => {
     })
     await act(async () => { render(<RecruiterPipeline user={mockUser} />) })
     await act(async () => { fireEvent.click(screen.getAllByText('Senior Engineer')[0]) })
-    await waitFor(() => screen.getByText('Bob Candidate'))
+    await waitFor(() => screen.getAllByText('Bob Candidate')[0])
     await act(async () => { fireEvent.click(screen.getByRole('checkbox')) })
     expect(screen.getByText(/1 selected/i)).toBeInTheDocument()
     await act(async () => { fireEvent.click(screen.getByText('Clear')) })
@@ -429,7 +429,7 @@ describe('RecruiterPipeline', () => {
 
   // ── Park action ───────────────────────────────────────────────────────────
 
-  it.skip('calls parkApplication when Park button is clicked', async () => {
+  it('calls parkApplication when Park button is clicked', async () => {
     api.getJobs.mockResolvedValue({ data: [makeJob()] })
     api.getApplications.mockResolvedValue({
       data: [makeApp()],
@@ -444,7 +444,7 @@ describe('RecruiterPipeline', () => {
     expect(api.parkApplication).toHaveBeenCalledWith('app1')
   })
 
-  it.skip('shows toast on park success', async () => {
+  it('shows toast on park success', async () => {
     api.getJobs.mockResolvedValue({ data: [makeJob()] })
     api.getApplications.mockResolvedValue({
       data: [makeApp()],
