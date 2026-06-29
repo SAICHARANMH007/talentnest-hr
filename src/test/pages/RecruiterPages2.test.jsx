@@ -457,10 +457,10 @@ describe('RecruiterAssessments', () => {
     await waitFor(() => {
       expect(screen.getAllByText('Test Assessment').length).toBeGreaterThan(0)
     })
-    // Click the assessment to open detail — look for any row click button
-    const viewBtn = screen.queryByText(/View|Submissions|Open/i)
-    if (viewBtn) {
-      await act(async () => { fireEvent.click(viewBtn) })
+    // Click "Open →" button to open assessment detail and load submissions
+    const openBtns = screen.queryAllByText(/Open →/i)
+    if (openBtns.length > 0) {
+      await act(async () => { fireEvent.click(openBtns[0]) })
       await waitFor(() => {
         expect(api.getAssessmentSubmissions).toHaveBeenCalled()
       })
@@ -731,15 +731,13 @@ describe('ScheduleInterviewPage', () => {
       expect(api.getApplication).toHaveBeenCalled()
       expect(screen.getByTestId('page-header')).toBeTruthy()
     })
-    // Fill date and time — use queryAllByLabelText to avoid "multiple elements" error
-    const dateInputs = screen.queryAllByLabelText(/^Date/i)
-    const timeInputs = screen.queryAllByLabelText(/^Time/i)
-    if (dateInputs.length > 0) fireEvent.change(dateInputs[0], { target: { value: '2024-12-01' } })
-    if (timeInputs.length > 0) fireEvent.change(timeInputs[0], { target: { value: '10:00' } })
-    // Click the primary schedule/save button (Schedule & Send Email or Schedule Only)
-    const saveBtn = screen.queryByText(/Schedule & Send Email|Schedule Only/i)
-    if (saveBtn) {
-      await act(async () => { fireEvent.click(saveBtn) })
+    // Fill interview date using its exact aria-label "Interview Date *"
+    const dateInput = screen.queryByLabelText('Interview Date *')
+    if (dateInput) fireEvent.change(dateInput, { target: { value: '2024-12-01' } })
+    // Click "Save Only" (no email) — text rendered is literal 'Save Only'
+    const saveOnlyBtn = screen.queryByText('Save Only')
+    if (saveOnlyBtn) {
+      await act(async () => { fireEvent.click(saveOnlyBtn) })
       await waitFor(() => {
         expect(api.scheduleInterview).toHaveBeenCalled()
       })

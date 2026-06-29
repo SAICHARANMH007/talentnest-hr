@@ -156,7 +156,8 @@ describe('TrendCard', () => {
 
   it('displays the label', () => {
     render(<TrendCard label="Active Jobs" value={15} />)
-    expect(screen.getByText('ACTIVE JOBS')).toBeInTheDocument()
+    // TrendCard applies textTransform:uppercase via CSS; actual DOM text is the raw label
+    expect(screen.getByText('Active Jobs')).toBeInTheDocument()
   })
 
   it('displays the value', () => {
@@ -284,11 +285,6 @@ describe('BroadcastBanner', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     api.getActiveBroadcasts.mockResolvedValue([])
-    vi.useFakeTimers()
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
   })
 
   it('renders nothing initially (no broadcasts yet)', () => {
@@ -296,10 +292,11 @@ describe('BroadcastBanner', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('renders nothing when broadcasts array is empty', async () => {
+  it('renders nothing when broadcasts array is empty after mount', async () => {
     api.getActiveBroadcasts.mockResolvedValue([])
     const { container } = render(<BroadcastBanner userRole="recruiter" />)
-    await act(async () => { vi.advanceTimersByTime(1300) })
+    // Give enough time for the 1200ms timer + async fetch
+    await act(async () => { await new Promise(r => setTimeout(r, 1400)) })
     expect(container.firstChild).toBeNull()
   })
 
@@ -314,11 +311,9 @@ describe('BroadcastBanner', () => {
       },
     ])
     render(<BroadcastBanner userRole="recruiter" />)
-    await act(async () => { vi.advanceTimersByTime(1300) })
-    await waitFor(() => {
-      expect(screen.getByText('Welcome!')).toBeInTheDocument()
-    })
-  })
+    await act(async () => { await new Promise(r => setTimeout(r, 1400)) })
+    expect(screen.getByText('Welcome!')).toBeInTheDocument()
+  }, 10000)
 
   it('renders candidate modal for candidate role', async () => {
     api.getActiveBroadcasts.mockResolvedValue([
@@ -331,11 +326,9 @@ describe('BroadcastBanner', () => {
       },
     ])
     render(<BroadcastBanner userRole="candidate" />)
-    await act(async () => { vi.advanceTimersByTime(1300) })
-    await waitFor(() => {
-      expect(screen.getByText('Hello Candidate')).toBeInTheDocument()
-    })
-  })
+    await act(async () => { await new Promise(r => setTimeout(r, 1400)) })
+    expect(screen.getByText('Hello Candidate')).toBeInTheDocument()
+  }, 10000)
 
   it('dismisses broadcast when Got it! is clicked', async () => {
     api.getActiveBroadcasts.mockResolvedValue([
@@ -348,13 +341,12 @@ describe('BroadcastBanner', () => {
       },
     ])
     render(<BroadcastBanner userRole="recruiter" />)
-    await act(async () => { vi.advanceTimersByTime(1300) })
-    await waitFor(() => expect(screen.getByText('News')).toBeInTheDocument())
+    await act(async () => { await new Promise(r => setTimeout(r, 1400)) })
+    expect(screen.getByText('News')).toBeInTheDocument()
     fireEvent.click(screen.getByText(/Got it!/i))
-    // After dismissal the modal fades out
-    await act(async () => { vi.advanceTimersByTime(300) })
+    await act(async () => { await new Promise(r => setTimeout(r, 300)) })
     expect(screen.queryByText('News')).not.toBeInTheDocument()
-  })
+  }, 10000)
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
