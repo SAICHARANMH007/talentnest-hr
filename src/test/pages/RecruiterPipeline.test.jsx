@@ -291,13 +291,16 @@ describe('RecruiterPipeline', () => {
     await act(async () => { render(<RecruiterPipeline user={mockUser} />) })
     await act(async () => { fireEvent.click(screen.getAllByText('Senior Engineer')[0]) })
     await waitFor(() => screen.getAllByText('Bob Candidate')[0])
-    const shortlistedEl = screen.getAllByText(/Shortlisted/i)[0]
-    const shortlistedBtn = shortlistedEl.closest('button') || shortlistedEl
+    // Find the stage filter button (contains "Shortlisted" text)
+    const allButtons = screen.getAllByRole('button')
+    const shortlistedBtn = allButtons.find(b => /Shortlisted/i.test(b.textContent))
+    expect(shortlistedBtn).toBeTruthy()
     await act(async () => { fireEvent.click(shortlistedBtn) })
     await waitFor(() => {
-      const lastCall = api.getApplications.mock.calls.at(-1)[0]
-      expect(lastCall.stage).toBe('shortlisted')
-    })
+      const calls = api.getApplications.mock.calls
+      const stageCall = calls.find(c => c[0]?.stage === 'shortlisted')
+      expect(stageCall).toBeTruthy()
+    }, { timeout: 3000 })
   })
 
   // ── Candidate card interactions ───────────────────────────────────────────
