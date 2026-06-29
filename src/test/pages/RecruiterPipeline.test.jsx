@@ -291,7 +291,8 @@ describe('RecruiterPipeline', () => {
     await act(async () => { render(<RecruiterPipeline user={mockUser} />) })
     await act(async () => { fireEvent.click(screen.getAllByText('Senior Engineer')[0]) })
     await waitFor(() => screen.getAllByText('Bob Candidate')[0])
-    const shortlistedBtn = screen.getAllByText(/Shortlisted/i)[0]
+    const shortlistedEl = screen.getAllByText(/Shortlisted/i)[0]
+    const shortlistedBtn = shortlistedEl.closest('button') || shortlistedEl
     await act(async () => { fireEvent.click(shortlistedBtn) })
     await waitFor(() => {
       const lastCall = api.getApplications.mock.calls.at(-1)[0]
