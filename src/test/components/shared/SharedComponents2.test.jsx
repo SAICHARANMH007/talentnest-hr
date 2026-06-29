@@ -133,16 +133,7 @@ vi.mock('../../../components/shared/ResumeCard.jsx', () => ({
   default: () => React.createElement('div', { 'data-testid': 'resume-card' }),
 }))
 
-vi.mock('../../../components/shared/CompanyAutocomplete.jsx', () => ({
-  default: ({ value, onChange, label }) =>
-    React.createElement('div', { 'data-testid': 'company-autocomplete' },
-      React.createElement('input', {
-        'aria-label': label || 'company',
-        value: value || '',
-        onChange: e => onChange?.(e.target.value),
-      })
-    ),
-}))
+// CompanyAutocomplete is tested directly below — do not mock it here
 
 vi.mock('../../../components/shared/UserDetailDrawer.jsx', () => ({
   default: ({ onClose }) =>
@@ -409,9 +400,9 @@ describe('MessageModal', () => {
     expect(screen.getByTestId('modal')).toBeInTheDocument()
   })
 
-  it('shows recipient name', () => {
+  it('shows message textarea with recipient name in placeholder', () => {
     render(<MessageModal recipient={recipient} onClose={mockOnClose} />)
-    expect(screen.getAllByText('Alice')[0]).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/Write a message to Alice/i)).toBeInTheDocument()
   })
 
   it('calls sendMessage when Send button is clicked', async () => {
@@ -510,7 +501,7 @@ describe('InviteModal', () => {
       render(<InviteModal candidates={candidates} onClose={mockOnClose} onSent={vi.fn()} />)
     })
     await waitFor(() => {
-      expect(screen.getByText(/Engineer/i)).toBeInTheDocument()
+      expect(screen.getAllByText(/Engineer/i)[0]).toBeInTheDocument()
     })
   })
 })
@@ -589,7 +580,7 @@ describe('MessageInbox', () => {
     await act(async () => {
       render(<MessageInbox open={true} onClose={mockOnClose} />)
     })
-    expect(screen.getByText(/Messages/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/Messages/i)[0]).toBeInTheDocument()
   })
 
   it('shows empty state when no messages', async () => {
