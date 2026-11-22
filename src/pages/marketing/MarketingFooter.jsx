@@ -19,6 +19,8 @@ const PRODUCT_LINKS = [
   { to: '/products/peopledesk', label: 'PeopleDesk — For HR Admins' },
   { to: '/products/jobtrack',   label: 'JobTrack — For Job Seekers' },
   { to: '/products/campushub',  label: 'CampusHub — For Placement Officers' },
+  // our end-to-end HRMS lives on its own site; a real link so search engines connect the two
+  { href: 'https://hrms.talentnesthr.com/', label: 'TalentNest HRMS — End-to-end HRMS & Payroll' },
   { to: '/products',            label: 'Explore All Products →' },
 ];
 
@@ -138,17 +140,17 @@ export default function MarketingFooter() {
           {/* Products */}
           <div>
             <span style={colHeaderStyle}>Products</span>
-            {PRODUCT_LINKS.map(l => (
-              <Link
-                key={l.to}
-                to={l.to}
-                style={linkStyle}
-                onMouseEnter={e => { e.currentTarget.style.color = 'var(--mkt-accent)'; e.currentTarget.style.transform = 'translateX(4px)'; }}
-                onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; e.currentTarget.style.transform = 'translateX(0)'; }}
-              >
-                {l.label}
-              </Link>
-            ))}
+            {PRODUCT_LINKS.map(l => {
+              const hover = {
+                onMouseEnter: e => { e.currentTarget.style.color = 'var(--mkt-accent)'; e.currentTarget.style.transform = 'translateX(4px)'; },
+                onMouseLeave: e => { e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; e.currentTarget.style.transform = 'translateX(0)'; },
+              };
+              return l.href ? (
+                <a key={l.href} href={l.href} style={linkStyle} {...hover}>{l.label}</a>
+              ) : (
+                <Link key={l.to} to={l.to} style={linkStyle} {...hover}>{l.label}</Link>
+              );
+            })}
           </div>
 
           {/* Solutions */}

@@ -85,6 +85,7 @@ export default function HRMSPage() {
           <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link to="/contact" className="btn btn-primary btn-lg">Request a Demo →</Link>
             <Link to="/contact" className="btn btn-secondary btn-lg">Get Pricing</Link>
+            <a href="https://hrms.talentnesthr.com/" className="btn btn-secondary btn-lg">Open TalentNest HRMS →</a>
           </div>
           <IdentityCardIllustration style={{ width: '100%', maxWidth: 360, height: 'auto', margin: '40px auto 0', display: 'block' }} />
         </div>
