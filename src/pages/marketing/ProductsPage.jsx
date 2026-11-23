@@ -85,13 +85,33 @@ const PRODUCTS = [
       'Career Network — Students, alumni and recruiters stay connected through My Network',
     ],
   },
+  {
+    // the end-to-end HRMS runs on its own site
+    href:     'https://hrms.talentnesthr.com/',
+    name:     'TalentNest HRMS',
+    for:      'For HR, Payroll & Every Employee',
+    icon:     '🧩',
+    accent:   '#5B5BD6',
+    gradient: 'linear-gradient(135deg,#5B5BD6,#0EA5E9)',
+    tagline:  'The end-to-end HRMS — people, attendance, leave, Indian payroll, performance and learning in one place.',
+    what:     'TalentNest HRMS runs the whole employee journey after the hire: employee records (HRIS), attendance from web, phone and biometric devices, leave, payroll with PF, ESI, PT and TDS, appraisals, learning, expenses and live analytics — on the web and on every phone.',
+    bullets: [
+      'Attendance — Web, mobile GPS and biometric punches, office boundaries and field-staff route tracking',
+      'Leave & Holidays — Policies, balances, approvals and holiday calendars by company and branch',
+      'Indian Payroll — Salary structures, PF, ESI, PT, LWF, TDS, Form 16, loans and flexi benefits',
+      'Onboarding to Exit — Onboarding checklists, induction courses, letters, exits and settlements',
+      'Performance & Learning — Goals, appraisals, 1:1s, courses with certificates and skill gaps',
+      'Expenses & Approvals — Claims, advances, travel and multi-step approval chains',
+      'People Analytics — 90+ live charts; tap any number to see the records behind it',
+    ],
+  },
 ];
 
 export default function ProductsPage() {
   useMarketingTheme();
   useSEO({
-    title: 'Products — HireBoard, PeopleDesk, JobTrack & CampusHub | TalentNest HR',
-    description: 'Explore TalentNest\'s four products: HireBoard for recruiters, PeopleDesk for HR admins, JobTrack for job seekers, and CampusHub for colleges — one platform for every person in the hiring journey.',
+    title: 'Products — HireBoard, PeopleDesk, JobTrack, CampusHub & TalentNest HRMS | TalentNest HR',
+    description: 'Explore TalentNest\'s five products: HireBoard for recruiters, PeopleDesk for HR admins, JobTrack for job seekers, CampusHub for colleges, and TalentNest HRMS — the end-to-end HRMS and payroll for every employee.',
     path: '/products',
     schema: {
       '@context': 'https://schema.org',
@@ -106,7 +126,7 @@ export default function ProductsPage() {
           operatingSystem: 'Web',
           brand: { '@type': 'Brand', name: 'TalentNest HR' },
           description: p.what,
-          url: `https://www.talentnesthr.com${p.to}`,
+          url: p.href || `https://www.talentnesthr.com${p.to}`,
         },
       })),
     },
@@ -130,19 +150,19 @@ export default function ProductsPage() {
         <div style={{ position:'absolute',top:'-15%',left:'50%',transform:'translateX(-50%)',width:'700px',height:'700px',borderRadius:'50%',background:'radial-gradient(circle,rgba(1,118,211,0.15),transparent 65%)',pointerEvents:'none' }} />
         <div style={{ position:'relative',maxWidth:720,margin:'0 auto' }}>
           <span className="mkt-reveal" style={{ display:'inline-block',fontSize:12,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',color:'#7DD3FC',background:'rgba(1,118,211,0.15)',border:'1px solid rgba(1,118,211,0.3)',borderRadius:100,padding:'5px 16px',marginBottom:24 }}>
-            Four products. One login.
+            Five products. One platform.
           </span>
           <h1 className="mkt-reveal" style={{ fontSize:'clamp(36px,5.5vw,64px)', fontWeight:900, color:'#fff', letterSpacing:'-0.04em', lineHeight:1.06, margin:'0 0 20px' }}>
             Built for every person<br />in the hiring journey.
           </h1>
           <p className="mkt-reveal" style={{ fontSize:'clamp(15px,1.6vw,18px)', color:'rgba(255,255,255,0.62)', margin:'0 0 12px', lineHeight:1.75, maxWidth:560, marginLeft:'auto', marginRight:'auto' }}>
-            TalentNest HR is one platform with four distinct products — each designed for the person using it, with features built around exactly what they need to do.
+            TalentNest HR is one platform with five distinct products — from hiring to payroll, each designed for the person using it, with features built around exactly what they need to do.
           </p>
           <TrustGraphIllustration style={{ width: '100%', maxWidth: 360, height: 'auto', margin: '40px auto 0', display: 'block' }} />
         </div>
       </section>
 
-      {/* THREE PRODUCTS */}
+      {/* PRODUCTS */}
       <section style={{ padding:'clamp(64px,8vw,100px) clamp(16px,5vw,80px)', background:'var(--mkt-section-bg)' }}>
         <div style={{ maxWidth:1100,margin:'0 auto',display:'flex',flexDirection:'column',gap:32 }}>
           {PRODUCTS.map((p,i) => (
@@ -160,11 +180,13 @@ export default function ProductsPage() {
                 </div>
                 <p style={{ fontSize:15,fontWeight:600,color:'var(--mkt-text-heading)',lineHeight:1.5,margin:'0 0 10px' }}>{p.tagline}</p>
                 <p style={{ fontSize:13,color:'var(--mkt-text-secondary)',lineHeight:1.7,margin:'0 0 24px' }}>{p.what}</p>
-                <Link to={p.to} style={{ display:'inline-flex',alignItems:'center',gap:8,background:p.gradient,color:'#fff',padding:'11px 24px',borderRadius:11,fontWeight:800,fontSize:13,textDecoration:'none',transition:'all 0.2s' }}
-                  onMouseEnter={e=>e.currentTarget.style.transform='translateY(-2px)'}
-                  onMouseLeave={e=>e.currentTarget.style.transform='none'}>
-                  Explore {p.name} →
-                </Link>
+                {(() => {
+                  const look = { style: { display:'inline-flex',alignItems:'center',gap:8,background:p.gradient,color:'#fff',padding:'11px 24px',borderRadius:11,fontWeight:800,fontSize:13,textDecoration:'none',transition:'all 0.2s' },
+                    onMouseEnter: e=>e.currentTarget.style.transform='translateY(-2px)', onMouseLeave: e=>e.currentTarget.style.transform='none' };
+                  return p.href
+                    ? <a href={p.href} {...look}>Explore {p.name} →</a>
+                    : <Link to={p.to} {...look}>Explore {p.name} →</Link>;
+                })()}
               </div>
               {/* Right: feature list */}
               <div style={{ padding:'clamp(28px,4vw,48px)', background:'var(--mkt-surface-bg)' }}>
@@ -193,7 +215,7 @@ export default function ProductsPage() {
           <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:20 }}>
             {[
               { to:'/careers', icon:'📋', name:'Job Board', accent:'#0176D3', gradient:'linear-gradient(135deg,#0176D3,#00C2CB)', desc:'Browse all active jobs from every company on TalentNest HR. Candidates apply directly. Companies get applications in their HireBoard pipeline instantly.' },
-              { to:'/hrms',    icon:'⚙️', name:'HRMS',      accent:'#059669', gradient:'linear-gradient(135deg,#059669,#34d399)', desc:'Powered by Faceify — face-recognition attendance, shift scheduling, leave management, and payroll input exports for your workforce.' },
+              { to:'/hrms',    icon:'⚙️', name:'Faceify HRMS',      accent:'#059669', gradient:'linear-gradient(135deg,#059669,#34d399)', desc:'Powered by Faceify — face-recognition attendance, shift scheduling, leave management, and payroll input exports for your workforce.' },
             ].map(p => (
               <div key={p.name} className="mkt-reveal" style={{ background:'var(--mkt-card-bg)',border:'1px solid var(--mkt-card-border)',borderRadius:20,padding:'28px 24px' }}>
                 <div style={{ display:'flex',alignItems:'center',gap:12,marginBottom:16 }}>

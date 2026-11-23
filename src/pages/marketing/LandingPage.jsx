@@ -504,7 +504,7 @@ export default function LandingPage() {
       <section style={{ background: 'var(--mkt-surface-bg)', padding: 'clamp(48px,6vw,72px) clamp(16px,5vw,80px)' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', textAlign: 'center' }}>
           <p className="mkt-reveal" style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--mkt-accent)', marginBottom: 12 }}>
-            Four products. One platform.
+            Five products. One platform.
           </p>
           <h2 className="mkt-reveal" style={{ fontSize: 'clamp(24px,3.5vw,40px)', fontWeight: 900, color: 'var(--mkt-text-heading)', margin: '0 0 40px', letterSpacing: '-0.03em' }}>
             Built for every person in the hiring journey
@@ -515,8 +515,9 @@ export default function LandingPage() {
               { emoji: '🏢', name: 'PeopleDesk', role: 'For HR Admins',  desc: 'Analytics, pre-boarding, background verification, org career page — total control.', color: '#059669', gradient: 'linear-gradient(135deg,#059669,#0891B2)', to: '/products/peopledesk' },
               { emoji: '🚀', name: 'JobTrack',   role: 'For Job Seekers', desc: 'Browse jobs, track every application live, join interviews, sign offer from phone.', color: '#7c3aed', gradient: 'linear-gradient(135deg,#7c3aed,#0176D3)', to: '/products/jobtrack' },
               { emoji: '🎓', name: 'CampusHub',  role: 'For Colleges', desc: 'Run placement drives, track student outcomes, and surface skill-gap insights for your campus.', color: '#F59E0B', gradient: 'linear-gradient(135deg,#F59E0B,#EA580C)', to: '/products/campushub' },
-            ].map(p => (
-              <Link key={p.name} to={p.to} className="mkt-reveal" style={{
+              { emoji: '🧩', name: 'TalentNest HRMS', role: 'End-to-end HRMS', desc: 'Attendance, leave, Indian payroll, performance, learning and analytics for every employee.', color: '#5B5BD6', gradient: 'linear-gradient(135deg,#5B5BD6,#0EA5E9)', href: 'https://hrms.talentnesthr.com/' },
+            ].map(p => { const Tag = p.href ? 'a' : Link; const where = p.href ? { href: p.href } : { to: p.to }; return (
+              <Tag key={p.name} {...where} className="mkt-reveal" style={{
                 display: 'flex', alignItems: 'flex-start', gap: 14, padding: '20px 22px',
                 background: 'var(--mkt-card-bg)', border: '1px solid var(--mkt-card-border)',
                 borderRadius: 16, textDecoration: 'none', transition: 'all 0.2s',
@@ -531,8 +532,8 @@ export default function LandingPage() {
                   <div style={{ fontSize: 11, fontWeight: 700, color: p.color, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>{p.role}</div>
                   <div style={{ fontSize: 13, color: 'var(--mkt-text-muted)', lineHeight: 1.5 }}>{p.desc}</div>
                 </div>
-              </Link>
-            ))}
+              </Tag>
+            ); })}
           </div>
           <Link to="/products" style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,

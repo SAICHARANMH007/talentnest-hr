@@ -20,8 +20,9 @@ const PRODUCT_ITEMS = [
   { to: '/products/peopledesk', hash: '', icon: '🏢', title: 'PeopleDesk', desc: 'HR control for admins & org managers' },
   { to: '/products/jobtrack',   hash: '', icon: '🚀', title: 'JobTrack',   desc: 'Apply, track & sign offers — candidates' },
   { to: '/products/campushub',  hash: '', icon: '🎓', title: 'CampusHub',  desc: 'Run placements for your campus' },
+  { href: 'https://hrms.talentnesthr.com/', icon: '🧩', title: 'TalentNest HRMS', desc: 'End-to-end HRMS, HRIS & payroll' },
   { to: '/careers',             hash: '', icon: '📋', title: 'JobBoard',  desc: 'Browse jobs from all companies' },
-  { to: '/hrms',                hash: '', icon: '⚙️', title: 'HRMS',       desc: 'Smart attendance & workforce management' },
+  { to: '/hrms',                hash: '', icon: '⚙️', title: 'Faceify HRMS', desc: 'Face-recognition attendance & access' },
 ];
 
 const NAV_LINKS = [
@@ -266,15 +267,15 @@ export default function MarketingNav({ active = 'home' }) {
                     </Link>
                     {productsOpen && (
                       <div className="svc-dropdown" onMouseEnter={openPrd} onMouseLeave={closePrd}>
-                        {PRODUCT_ITEMS.map(p => (
-                          <Link key={p.title} to={p.to + p.hash} className="svc-item" onClick={() => setProductsOpen(false)}>
+                        {PRODUCT_ITEMS.map(p => { const Tag = p.href ? 'a' : Link; const where = p.href ? { href: p.href } : { to: p.to + p.hash }; return (
+                          <Tag key={p.title} {...where} className="svc-item" onClick={() => setProductsOpen(false)}>
                             <span style={{ width: 36, height: 36, borderRadius: 10, background: `rgba(var(--mkt-accent-rgb),0.12)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, flexShrink: 0 }}>{p.icon}</span>
                             <span>
                               <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--mkt-text-heading)', display: 'block', marginBottom: 2 }}>{p.title}</span>
                               <span style={{ fontSize: 12, color: 'var(--mkt-text-muted)', display: 'block', lineHeight: 1.4 }}>{p.desc}</span>
                             </span>
-                          </Link>
-                        ))}
+                          </Tag>
+                        ); })}
                         <div className="svc-footer">
                           <Link to="/products" className="svc-view-all" onClick={() => setProductsOpen(false)}>Explore All Products →</Link>
                         </div>
@@ -459,11 +460,11 @@ export default function MarketingNav({ active = 'home' }) {
                     </button>
                     {mobileProductsOpen && (
                       <div className="tn-mobile-svc-list">
-                        {PRODUCT_ITEMS.map(p => (
-                          <Link key={p.title} to={p.to + p.hash} className="tn-mobile-svc-item" onClick={() => setMobileOpen(false)}>
+                        {PRODUCT_ITEMS.map(p => { const Tag = p.href ? 'a' : Link; const where = p.href ? { href: p.href } : { to: p.to + p.hash }; return (
+                          <Tag key={p.title} {...where} className="tn-mobile-svc-item" onClick={() => setMobileOpen(false)}>
                             <span>{p.icon}</span> {p.title}
-                          </Link>
-                        ))}
+                          </Tag>
+                        ); })}
                       </div>
                     )}
                   </>
